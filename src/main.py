@@ -49,7 +49,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # React development server
-        "http://127.0.0.1:3000",  # Alternative localhost
+        "http://127.0.0.1:3000", 
+        "https://raposa-17qpnbtb5-lucasc11-icloudcoms-projects.vercel.app/",
+        "https://raposa.tech" # Alternative localhost
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],

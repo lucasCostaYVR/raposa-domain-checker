@@ -1,3 +1,15 @@
 fastapi>=0.115.8
 uvicorn
 gunicorn
+sqlalchemy
+psycopg2-binary
+alembic
+pydantic-settings
+asyncpg
+dnspython
+email-validator
+sib-api-v3-sdk
+jinja2
+reportlab
+matplotlib
+plotly
