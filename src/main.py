@@ -44,18 +44,10 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configure CORS for frontend development
+# Configure CORS for frontend development with custom origin checking
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React development server
-        "https://localhost:3000",  # React development server (HTTPS)
-        "http://127.0.0.1:3000",  # Alternative localhost
-        "https://127.0.0.1:3000",  # Alternative localhost (HTTPS)
-        "https://raposa-17qpnbtb5-lucasc11-icloudcoms-projects.vercel.app",  # Vercel preview URL
-        "https://raposa-app.vercel.app",  # Vercel production URL
-        "https://raposa.tech"  # Custom domain
-    ],
+    allow_origin_regex=r"https://.*\.raposa\.tech|https://raposa\.tech|https://.*\.vercel\.app|https?://localhost:3000|https?://127\.0\.0\.1:3000",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
