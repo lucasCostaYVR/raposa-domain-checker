@@ -257,12 +257,12 @@ const submitDomainCheck = async (formData) => {
         opt_in_marketing: formData.optInMarketing
       })
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Analysis failed');
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('Domain check failed:', error);
@@ -294,7 +294,7 @@ const submitDomainCheck = async (formData) => {
 // Grade color mapping
 const gradeColors = {
   'A+': '#28a745', 'A': '#28a745', 'A-': '#28a745',
-  'B+': '#17a2b8', 'B': '#17a2b8', 'B-': '#17a2b8', 
+  'B+': '#17a2b8', 'B': '#17a2b8', 'B-': '#17a2b8',
   'C+': '#ffc107', 'C': '#ffc107', 'C-': '#ffc107',
   'D+': '#fd7e14', 'D': '#fd7e14', 'D-': '#fd7e14',
   'F': '#dc3545'
@@ -365,7 +365,7 @@ const gradeColors = {
 const StatusIcon = ({ status }) => {
   const icons = {
     'valid': '✅',
-    'warning': '⚠️', 
+    'warning': '⚠️',
     'invalid': '❌',
     'unknown': '❓'
   };
@@ -376,7 +376,7 @@ const StatusIcon = ({ status }) => {
 ### **Responsive Design**
 - **Mobile-first** approach
 - **Breakpoints**: 320px, 768px, 1024px, 1200px
-- **Key considerations**: 
+- **Key considerations**:
   - Stack components vertically on mobile
   - Ensure form inputs are touch-friendly
   - Optimize loading states for mobile
@@ -390,15 +390,15 @@ const StatusIcon = ({ status }) => {
 const ErrorHandler = {
   // Network errors
   NETWORK_ERROR: 'Unable to connect. Please check your internet connection.',
-  
+
   // Validation errors
   INVALID_DOMAIN: 'Please enter a valid domain name (e.g., example.com)',
   INVALID_EMAIL: 'Please enter a valid email address',
-  
+
   // API errors
   RATE_LIMITED: 'You\'ve reached the monthly limit for this domain. Try again next month.',
   SERVER_ERROR: 'Analysis failed. Please try again in a few moments.',
-  
+
   // Timeout errors
   TIMEOUT: 'Analysis is taking longer than expected. Please try again.'
 };
@@ -452,11 +452,11 @@ const AppState = {
     email: '',
     optInMarketing: false
   },
-  
+
   // UI state
   isLoading: false,
   error: null,
-  
+
   // Results
   analysisResults: null,
   emailSent: false
@@ -479,7 +479,14 @@ const CONFIG = {
 ### **CORS Configuration**
 ✅ **Already Configured**: The production API accepts requests from:
 - `http://localhost:3000` (React development server)
+- `https://localhost:3000` (React development server HTTPS)
 - `http://127.0.0.1:3000` (Alternative localhost)
+- `https://127.0.0.1:3000` (Alternative localhost HTTPS)
+- `https://raposa-app.vercel.app` (Vercel production)
+- `https://raposa-17qpnbtb5-lucasc11-icloudcoms-projects.vercel.app` (Vercel preview)
+- `https://raposa.tech` (Custom domain)
+
+**✅ CORS Status**: All origins tested and working - your frontend should have no CORS issues!
 
 No additional CORS configuration needed on the frontend side.
 
@@ -495,7 +502,7 @@ No additional CORS configuration needed on the frontend side.
 // Recommended events to track
 const Analytics = {
   DOMAIN_CHECK_STARTED: 'domain_check_started',
-  DOMAIN_CHECK_COMPLETED: 'domain_check_completed', 
+  DOMAIN_CHECK_COMPLETED: 'domain_check_completed',
   EMAIL_SUBMITTED: 'email_submitted',
   ERROR_OCCURRED: 'error_occurred'
 };
@@ -541,7 +548,7 @@ const DomainCheckForm = ({ onSubmit, isLoading }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     // Domain validation
     const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
     if (!formData.domain) {
@@ -549,7 +556,7 @@ const DomainCheckForm = ({ onSubmit, isLoading }) => {
     } else if (!domainRegex.test(formData.domain)) {
       newErrors.domain = 'Please enter a valid domain (e.g., example.com)';
     }
-    
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email) {
@@ -557,7 +564,7 @@ const DomainCheckForm = ({ onSubmit, isLoading }) => {
     } else if (!emailRegex.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -639,12 +646,12 @@ export default DomainCheckForm;
 - **Graceful degradation** on limit exceeded
 
 ### **Core Features Implemented**
-✅ **Domain Security Analysis**: MX, SPF, DKIM, DMARC records  
-✅ **Intelligent Scoring**: 0-100 points with A-F grades  
-✅ **Email Reports**: HTML email delivery via Brevo  
-✅ **Background Processing**: Non-blocking email sending  
-✅ **Error Handling**: Comprehensive error responses  
-✅ **CORS Support**: Ready for frontend development  
+✅ **Domain Security Analysis**: MX, SPF, DKIM, DMARC records
+✅ **Intelligent Scoring**: 0-100 points with A-F grades
+✅ **Email Reports**: HTML email delivery via Brevo
+✅ **Background Processing**: Non-blocking email sending
+✅ **Error Handling**: Comprehensive error responses
+✅ **CORS Support**: Ready for frontend development
 
 ---
 

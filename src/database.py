@@ -17,7 +17,7 @@ if not DATABASE_URL:
 logger.info("Database URL found, proceeding with PostgreSQL setup.")
 # Enhanced connection configuration for better reliability
 engine = create_engine(
-    DATABASE_URL, 
+    DATABASE_URL,
     connect_args={
         "connect_timeout": 10
     },

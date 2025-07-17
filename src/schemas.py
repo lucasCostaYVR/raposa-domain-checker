@@ -35,19 +35,26 @@ class DomainCheckResponse(BaseModel):
     id: int
     email: str
     domain: str
-    
-    # Enhanced DNS results
+
+    # Enhanced DNS results with user-friendly explanations
     mx_record: Optional[Dict[str, Any]] = None
     spf_record: Optional[Dict[str, Any]] = None
     dkim_record: Optional[Dict[str, Any]] = None
     dmarc_record: Optional[Dict[str, Any]] = None
-    
+
     # Overall assessment
     score: Optional[int] = None
     grade: Optional[str] = None
     issues: Optional[List[str]] = None
     recommendations: Optional[List[str]] = None
     
+    # New user-friendly summary
+    security_summary: Optional[Dict[str, Any]] = None
+
+    # Timestamps
+    created_at: datetime
+    opt_in_marketing: bool = False
+
     # Metadata
     opt_in_marketing: bool
     created_at: datetime

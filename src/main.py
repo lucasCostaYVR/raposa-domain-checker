@@ -175,6 +175,7 @@ async def check_domain(request: DomainCheckRequest, background_tasks: Background
             grade=dns_analysis["grade"],
             issues=dns_analysis["issues"],
             recommendations=dns_analysis["recommendations"],
+            security_summary=dns_analysis["security_summary"],
             opt_in_marketing=request.opt_in_marketing
         )
 
@@ -216,6 +217,7 @@ async def check_domain(request: DomainCheckRequest, background_tasks: Background
                 "dmarc_record": dns_analysis["dmarc"],
                 "issues": dns_analysis["issues"],
                 "recommendations": dns_analysis["recommendations"],
+                "security_summary": dns_analysis["security_summary"],
                 "created_at": domain_check.created_at.isoformat()
             },
             is_first_check=is_first_check

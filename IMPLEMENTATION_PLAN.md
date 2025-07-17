@@ -53,7 +53,7 @@ dns_records = {
 - [x] **Scoring Matrix Implementation**
   - MX Records (20 points): Presence and configuration
   - SPF Records (25 points): Syntax, mechanisms, hard fail
-  - DKIM Records (25 points): Key strength, multiple selectors  
+  - DKIM Records (25 points): Key strength, multiple selectors
   - DMARC Records (30 points): Policy strictness, reporting setup
 
 - [x] **Grading System**

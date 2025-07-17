@@ -134,7 +134,7 @@ async def query_dns_record(domain: str, record_type: str, timeout: int = 5) -> O
         resolver = dns.resolver.Resolver()
         resolver.timeout = timeout
         resolver.lifetime = timeout
-        
+
         result = resolver.resolve(domain, record_type)
         return {"records": [str(record) for record in result]}
     except dns.exception.Timeout:
@@ -182,7 +182,7 @@ async def check_domain(
 ) -> DomainCheckResponse:
     """
     Check domain security configuration.
-    
+
     - **domain**: Domain name to check (e.g., example.com)
     - **email**: Email address for results delivery
     """
@@ -190,19 +190,19 @@ async def check_domain(
         # Validate domain format
         if not is_valid_domain(request.domain):
             raise HTTPException(status_code=422, detail="Invalid domain format")
-        
+
         # Check usage limits
         if await check_usage_limit(request.email, db):
             raise HTTPException(status_code=429, detail="Usage limit exceeded")
-        
+
         # Perform domain check
         result = await perform_domain_check(request.domain)
-        
+
         # Save to database
         db_check = await create_domain_check(request, result, db)
-        
+
         return DomainCheckResponse.from_orm(db_check)
-        
+
     except HTTPException:
         raise
     except Exception as e:
