@@ -2,14 +2,19 @@ from typing import Union
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import get_db, engine
-from models import Base, DomainCheck, DomainUsage
-from schemas import DomainCheckRequest, DomainCheckResponse
-from dns_utils import check_all_dns_records
-from email_service import get_email_service
+from .database import get_db, engine
+from .models import Base, DomainCheck, DomainUsage
+from .schemas import DomainCheckRequest, DomainCheckResponse
+from .dns_utils import check_all_dns_records
+from .email_service import get_email_service
 import re
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
