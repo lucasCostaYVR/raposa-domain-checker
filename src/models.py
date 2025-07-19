@@ -8,7 +8,6 @@ class DomainCheck(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, nullable=True, index=True)  # Now optional
     domain = Column(String, nullable=False, index=True)
-    client_ip = Column(String, nullable=True, index=True)  # Track IP for anonymous users
 
     # Enhanced DNS record storage
     mx_record = Column(JSON, nullable=True)         # Full MX analysis
@@ -32,16 +31,6 @@ class DomainUsage(Base):
     __tablename__ = "domain_usage"
 
     id = Column(Integer, primary_key=True, index=True)
-    domain = Column(String, nullable=False, index=True)
-    check_count = Column(Integer, default=1)
-    last_check = Column(DateTime(timezone=True), server_default=func.now())
-    month_year = Column(String, nullable=False, index=True)  # Format: "2025-01"
-
-class AnonymousUsage(Base):
-    __tablename__ = "anonymous_usage"
-
-    id = Column(Integer, primary_key=True, index=True)
-    client_ip = Column(String, nullable=False, index=True)
     domain = Column(String, nullable=False, index=True)
     check_count = Column(Integer, default=1)
     last_check = Column(DateTime(timezone=True), server_default=func.now())
