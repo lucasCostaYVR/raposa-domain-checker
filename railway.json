@@ -4,7 +4,7 @@
     },
     "deploy": {
         "healthcheckPath": "/healthz/",
-        "healthcheckTimeout": 300,
+        "healthcheckTimeout": 120,
         "restartPolicyType": "ON_FAILURE",
         "startCommand": "gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5"
     }
