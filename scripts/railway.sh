@@ -124,6 +124,25 @@ view_logs() {
     railway logs
 }
 
+# View deployment logs specifically
+view_deployment_logs() {
+    log "Viewing deployment logs for current environment..."
+    railway logs --deployment
+}
+
+# View build logs
+view_build_logs() {
+    log "Viewing build logs for current environment..."
+    railway logs --build
+}
+
+# Monitor deployment in real-time
+monitor_deployment() {
+    log "Monitoring deployment logs in real-time..."
+    info "Press Ctrl+C to stop monitoring"
+    railway logs --deployment --follow 2>/dev/null || railway logs --deployment
+}
+
 # Switch between environments
 switch_env() {
     if [ "$1" = "dev" ] || [ "$1" = "development" ]; then
@@ -242,6 +261,9 @@ show_help() {
     echo "  deploy-dev          Deploy to development environment"
     echo "  deploy-prod         Deploy to production environment"
     echo "  logs                View logs for current environment"
+    echo "  deploy-logs         View deployment logs specifically"
+    echo "  build-logs          View build logs"
+    echo "  monitor             Monitor deployment in real-time"
     echo "  switch <env>        Switch to dev/prod environment"
     echo "  migrate <message>   Create new database migration"
     echo "  rollback            Rollback last deployment"
@@ -255,6 +277,8 @@ show_help() {
     echo "Examples:"
     echo "  $0 deploy-dev"
     echo "  $0 switch prod"
+    echo "  $0 monitor              # Watch deployment in real-time"
+    echo "  $0 deploy-logs          # View deployment logs"
     echo "  $0 migrate \"Add email verification\""
     echo "  $0 setvar DEBUG true"
 }
@@ -278,6 +302,15 @@ main() {
             ;;
         "logs")
             view_logs
+            ;;
+        "deploy-logs")
+            view_deployment_logs
+            ;;
+        "build-logs")
+            view_build_logs
+            ;;
+        "monitor")
+            monitor_deployment
             ;;
         "switch")
             switch_env "$2"

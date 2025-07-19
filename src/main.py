@@ -48,13 +48,27 @@ def create_db_and_tables():
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 project_root = os.path.dirname(current_dir)
                 alembic_cfg_path = os.path.join(project_root, "alembic.ini")
-
+                
+                # Alternative paths to check for Railway deployment
+                alternative_paths = [
+                    alembic_cfg_path,  # ../alembic.ini (relative to src/)
+                    os.path.join(os.getcwd(), "alembic.ini"),  # ./alembic.ini (current working directory)
+                    "alembic.ini",  # Just the filename (current directory)
+                ]
+                
+                found_config = None
+                for path in alternative_paths:
+                    if os.path.exists(path):
+                        found_config = path
+                        logger.info(f"Found Alembic config at: {path}")
+                        break
+                
                 # Check if alembic.ini exists
-                if not os.path.exists(alembic_cfg_path):
-                    logger.warning(f"Alembic config not found at {alembic_cfg_path}, falling back to create_all")
+                if not found_config:
+                    logger.warning(f"Alembic config not found. Tried paths: {alternative_paths}")
                     raise FileNotFoundError("Alembic config not found")
 
-                alembic_cfg = Config(alembic_cfg_path)
+                alembic_cfg = Config(found_config)
 
                 # Run migrations to head
                 command.upgrade(alembic_cfg, "head")
