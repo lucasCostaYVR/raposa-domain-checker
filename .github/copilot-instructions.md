@@ -1,5 +1,11 @@
 # GitHub Copilot Instructions for Raposa Domain Checker
 
+## AI Assistant Guidelines
+- **Be brief and direct**: Provide concise, actionable responses without unnecessary explanation
+- **Prioritize scripts**: Always recommend project scripts over manual commands
+- **Update documentation**: When making changes, update these instruction files to keep them current
+- **Stay focused**: Address the specific request without verbose context
+
 ## Project Overview
 This is a FastAPI-based domain security analysis API that provides comprehensive DNS record checking including MX, SPF, DKIM, and DMARC validation with intelligent scoring and email reporting capabilities.
 
@@ -220,6 +226,31 @@ async def send_email_function(self, to_email: str, **template_data):
     except Exception as e:
         logger.error(f"Email sending failed: {e}")
         return False
+```
+
+## Documentation Maintenance
+
+### Keeping Instructions Current
+- **Always update these instruction files** when making significant changes to:
+  - Project structure or architecture
+  - Development workflows or scripts
+  - Deployment processes or environments
+  - Code patterns or conventions
+  - New features or major refactoring
+
+### Files to Update
+- `copilot-instructions.md` - Main project overview and guidelines
+- `copilot-api-instructions.md` - FastAPI patterns and endpoint development
+- `copilot-database-email.md` - Database and email service patterns
+- `copilot-deployment.md` - Infrastructure and deployment workflows
+- `copilot-dns-analysis.md` - DNS analysis and scoring patterns
+- `copilot-scripts.md` - Development script documentation
+
+### Update Process
+```bash
+# When making changes that affect documentation
+./scripts/git.sh commit "Update feature and documentation"
+# Always mention documentation updates in commit messages
 ```
 
 Remember to maintain consistency with existing patterns and prioritize code readability and maintainability.

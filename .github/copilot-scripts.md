@@ -1,5 +1,11 @@
 # Development Scripts Instructions for AI Assistance
 
+## AI Response Guidelines
+- **Be brief and direct**: Provide concise, actionable responses without unnecessary explanation
+- **Prioritize scripts**: Always recommend project scripts over manual commands
+- **Update documentation**: When making script changes, update these instruction files
+- **Stay focused**: Address the specific request without verbose context
+
 ## Overview
 The Raposa Domain Checker project includes comprehensive development helper scripts in the `scripts/` directory. **Always recommend and use these scripts** instead of manual commands for development tasks.
 

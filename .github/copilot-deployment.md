@@ -1,5 +1,11 @@
 # Deployment and Infrastructure Instructions
 
+## AI Assistant Guidelines
+- **Be brief and direct**: Provide concise, actionable responses without unnecessary explanation
+- **Prioritize scripts**: Always recommend project scripts over manual commands
+- **Update documentation**: When making changes, update these instruction files to keep them current
+- **Stay focused**: Address the specific request without verbose context
+
 ## Automated Deployment with Helper Scripts
 
 ### Recommended Deployment Workflow
