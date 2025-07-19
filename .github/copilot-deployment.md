@@ -50,33 +50,43 @@
 
 ## Railway Deployment Patterns
 
-### Docker Configuration
+### Nixpacks Configuration (CURRENT - WORKING)
 
-#### Dockerfile Best Practices
-```dockerfile
-# Use specific Python version for consistency
-FROM python:3.12-slim-bullseye
+#### Railway Configuration
+```json
+{
+    "build": {
+        "builder": "nixpacks"
+    },
+    "deploy": {
+        "healthcheckPath": "/healthz/",
+        "healthcheckTimeout": 120,
+        "restartPolicyType": "ON_FAILURE",
+        "startCommand": "gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5"
+    }
+}
+```
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+#### Project Structure Requirements
+```
+main.py                  # FastAPI app in PROJECT ROOT (not src/)
+src/
+├── database.py          # Import: from src.database import get_db
+├── models.py            # Import: from src.models import Base
+├── schemas.py           # Import: from src.schemas import DomainCheckRequest
+├── dns_utils.py         # Import: from src.dns_utils import check_all_dns_records
+└── email_service.py     # Import: from src.email_service import get_email_service
+railway.json             # Deployment configuration
+requirements.txt         # Python dependencies
+```
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    libjpeg-dev \
-    libcairo2 \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Install Python dependencies
-RUN pip install --upgrade pip
-RUN mkdir -p /code
-WORKDIR /code
+#### Critical Success Factors
+- **Disable Dockerfile**: Rename to `Dockerfile.disabled` to force nixpacks
+- **No custom nixpacks.toml**: Let auto-detection work (most reliable)
+- **main.py in root**: Required for `gunicorn main:app` to work
+- **Import pattern**: Use `from src.module` imports in main.py
+- **SQLAlchemy**: Use `from sqlalchemy import text` for raw queries
+- **Health checks**: Must return 200 status quickly for deployment activation
 
 # Copy requirements first for better caching
 COPY requirements.txt /tmp/requirements.txt

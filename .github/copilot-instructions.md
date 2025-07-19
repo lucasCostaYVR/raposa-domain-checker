@@ -41,8 +41,8 @@ This is a FastAPI-based domain security analysis API that provides comprehensive
 
 ## Project Structure
 ```
+main.py                  # FastAPI application entry point (project root)
 src/
-├── main.py              # FastAPI application entry point
 ├── database.py          # Database configuration and session management
 ├── models.py            # SQLAlchemy database models
 ├── schemas.py           # Pydantic request/response models
@@ -52,7 +52,13 @@ src/
     ├── domain_report.html
     ├── domain_report.txt
     └── welcome_email.html
+railway.json             # Railway deployment configuration
+alembic.ini              # Alembic migration configuration
+alembic/                 # Database migration files
+scripts/                 # Development automation scripts
 ```
+
+**Important**: `main.py` is located in the project root (not in `src/`) with imports using `from src.module` pattern for Railway deployment compatibility.
 
 ## Key Components
 
@@ -158,10 +164,34 @@ The project includes comprehensive helper scripts in the `scripts/` directory fo
 - `develop` branch → Development environment (`stage.domainchecker.raposa.tech`)
 
 ### Railway Deployment
-- Docker-based deployment using Dockerfile
-- Automatic deployments on branch pushes
-- Environment-specific configuration
-- Health checks at `/healthz/` endpoint
+- **nixpacks-based deployment**: Auto-detection for Python projects
+- **No Dockerfile required**: Dockerfile is disabled (renamed to Dockerfile.disabled)
+- **Automatic deployments**: Triggered on branch pushes via GitHub integration
+- **Environment-specific configuration**: Uses railway.json for deployment settings
+- **Health checks**: `/healthz/` endpoint with 120-second timeout
+- **Import structure**: main.py in project root with `from src.module` imports
+
+### Railway Configuration (railway.json)
+```json
+{
+    "build": {
+        "builder": "nixpacks"
+    },
+    "deploy": {
+        "healthcheckPath": "/healthz/",
+        "healthcheckTimeout": 120,
+        "restartPolicyType": "ON_FAILURE",
+        "startCommand": "gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5"
+    }
+}
+```
+
+### Critical Deployment Notes
+- **Use nixpacks auto-detection**: Remove any custom nixpacks.toml for best results
+- **Disable Dockerfile**: Rename to Dockerfile.disabled to force nixpacks usage
+- **Health check requirements**: Must use `from sqlalchemy import text` for database queries
+- **Import pattern**: All imports from src/ must use `from src.module` syntax
+- **Startup command**: Use `gunicorn main:app` (main.py in root, not src/main.py)
 
 ## Testing Guidelines
 - Test API endpoints with various input scenarios
