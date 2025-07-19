@@ -9,8 +9,8 @@ from alembic import context
 # Import your models here
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src'))
-from models import Base
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from src.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
