@@ -4,6 +4,7 @@ from src.database import Base
 
 class DomainCheck(Base):
     __tablename__ = "domain_checks"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, nullable=True, index=True)  # Now optional
@@ -29,6 +30,7 @@ class DomainCheck(Base):
 
 class DomainUsage(Base):
     __tablename__ = "domain_usage"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     domain = Column(String, nullable=False, index=True)
