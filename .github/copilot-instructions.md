@@ -187,9 +187,9 @@ async def endpoint_function(
 ):
     """
     Comprehensive docstring describing the endpoint.
-    
+
     - **param**: Parameter description
-    
+
     Returns detailed response description.
     """
     try:
@@ -209,7 +209,7 @@ async def endpoint_function(
 ```python
 class ModelName(Base):
     __tablename__ = "table_name"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     # Additional fields with proper types and constraints

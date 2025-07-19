@@ -24,20 +24,20 @@ quick_commit() {
         echo "Usage: $0 commit \"Your commit message\""
         exit 1
     fi
-    
+
     log "Quick commit with message: $1"
-    
+
     # Add all changes
     git add .
-    
+
     # Show what will be committed
     info "Files to be committed:"
     git diff --cached --name-only
     echo ""
-    
+
     # Commit with message
     git commit -m "$1"
-    
+
     log "Commit created successfully!"
 }
 
@@ -48,18 +48,18 @@ new_feature() {
         echo "Usage: $0 feature feature-name"
         exit 1
     fi
-    
+
     feature_name="feature/$1"
-    
+
     log "Creating new feature branch: $feature_name"
-    
+
     # Ensure we're on develop
     git checkout develop
     git pull origin develop
-    
+
     # Create and checkout feature branch
     git checkout -b "$feature_name"
-    
+
     log "Feature branch '$feature_name' created and checked out!"
     info "When ready, use: $0 finish-feature"
 }
@@ -67,14 +67,14 @@ new_feature() {
 # Finish feature and merge to develop
 finish_feature() {
     current_branch=$(git branch --show-current)
-    
+
     if [[ ! "$current_branch" =~ ^feature/ ]]; then
         error "Not on a feature branch. Current branch: $current_branch"
         exit 1
     fi
-    
+
     log "Finishing feature branch: $current_branch"
-    
+
     # Ensure all changes are committed
     if [ -n "$(git status --porcelain)" ]; then
         warn "You have uncommitted changes:"
@@ -89,19 +89,19 @@ finish_feature() {
             exit 1
         fi
     fi
-    
+
     # Switch to develop and merge
     git checkout develop
     git pull origin develop
     git merge "$current_branch"
-    
+
     # Push to origin
     git push origin develop
-    
+
     # Delete feature branch
     git branch -d "$current_branch"
     git push origin --delete "$current_branch" 2>/dev/null || true
-    
+
     log "Feature merged to develop and branch deleted!"
 }
 
@@ -109,7 +109,7 @@ finish_feature() {
 sync() {
     current_branch=$(git branch --show-current)
     log "Syncing branch '$current_branch' with remote..."
-    
+
     # Stash any uncommitted changes
     if [ -n "$(git status --porcelain)" ]; then
         warn "Stashing uncommitted changes..."
@@ -118,42 +118,42 @@ sync() {
     else
         stashed=false
     fi
-    
+
     # Pull latest changes
     git pull origin "$current_branch"
-    
+
     # Restore stashed changes
     if [ "$stashed" = true ]; then
         info "Restoring stashed changes..."
         git stash pop
     fi
-    
+
     log "Sync complete!"
 }
 
 # Release to production (develop -> main)
 release() {
     log "Starting release process (develop -> main)..."
-    
+
     # Ensure develop is clean and up-to-date
     git checkout develop
-    
+
     if [ -n "$(git status --porcelain)" ]; then
         error "Develop branch has uncommitted changes. Please commit first."
         git status --short
         exit 1
     fi
-    
+
     git pull origin develop
-    
+
     # Switch to main and merge
     git checkout main
     git pull origin main
     git merge develop
-    
+
     # Push to trigger production deployment
     git push origin main
-    
+
     log "Release complete! Production deployment triggered."
     info "Monitor deployment at Railway dashboard"
 }
@@ -162,11 +162,11 @@ release() {
 status() {
     log "Git Status Summary:"
     echo ""
-    
+
     info "Current branch: $(git branch --show-current)"
     info "Last commit: $(git log -1 --oneline)"
     echo ""
-    
+
     # Check for uncommitted changes
     if [ -n "$(git status --porcelain)" ]; then
         warn "Uncommitted changes:"
@@ -175,21 +175,21 @@ status() {
         info "Working tree clean ✅"
     fi
     echo ""
-    
+
     # Check if branch is behind remote
     git fetch origin 2>/dev/null
     current_branch=$(git branch --show-current)
     behind=$(git rev-list --count HEAD..origin/"$current_branch" 2>/dev/null || echo "0")
     ahead=$(git rev-list --count origin/"$current_branch"..HEAD 2>/dev/null || echo "0")
-    
+
     if [ "$behind" -gt 0 ]; then
         warn "Branch is $behind commits behind origin"
     fi
-    
+
     if [ "$ahead" -gt 0 ]; then
         info "Branch is $ahead commits ahead of origin"
     fi
-    
+
     if [ "$behind" -eq 0 ] && [ "$ahead" -eq 0 ]; then
         info "Branch is up to date with origin ✅"
     fi
@@ -198,24 +198,24 @@ status() {
 # Clean up merged branches
 cleanup() {
     log "Cleaning up merged branches..."
-    
+
     # Switch to develop
     git checkout develop
-    
+
     # Delete merged feature branches
     merged_branches=$(git branch --merged | grep -E "feature/" | grep -v "\*" || true)
-    
+
     if [ -n "$merged_branches" ]; then
         info "Deleting merged feature branches:"
         echo "$merged_branches"
         echo "$merged_branches" | xargs -n 1 git branch -d
-        
+
         # Try to delete remote branches too
         echo "$merged_branches" | xargs -n 1 -I {} git push origin --delete {} 2>/dev/null || true
     else
         info "No merged feature branches to clean up"
     fi
-    
+
     log "Cleanup complete!"
 }
 
@@ -231,7 +231,7 @@ branches() {
     log "Local branches:"
     git branch -v
     echo ""
-    
+
     log "Remote branches:"
     git branch -rv
 }
@@ -246,13 +246,13 @@ undo_commit() {
 # Emergency stash and sync
 emergency_sync() {
     log "Emergency sync - stashing everything and pulling latest..."
-    
+
     # Stash everything including untracked files
     git stash push -u -m "Emergency stash $(date)"
-    
+
     # Sync with remote
     sync
-    
+
     log "Emergency sync complete. Use 'git stash list' to see stashed changes."
 }
 
@@ -294,7 +294,7 @@ main() {
         error "Not in a git repository"
         exit 1
     fi
-    
+
     case "${1:-help}" in
         "commit")
             quick_commit "$2"

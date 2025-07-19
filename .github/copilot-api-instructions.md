@@ -56,37 +56,37 @@ async def {function_name}(
 ):
     """
     Brief description of what this endpoint does.
-    
+
     - **param1**: Description of parameter
     - **param2**: Description of parameter
-    
+
     Returns: Description of return value and structure.
     """
     try:
         # 1. Input validation
         ensure_database_ready()
-        
+
         # 2. Business logic validation
         if not await validation_function(input):
             raise HTTPException(status_code=422, detail="Validation error message")
-        
+
         # 3. Database operations
         result = db.query(Model).filter(...).first()
-        
+
         # 4. Business logic processing
         processed_data = await process_data(result)
-        
+
         # 5. Database updates
         db.add(new_record)
         db.commit()
         db.refresh(new_record)
-        
+
         # 6. Background tasks (if needed)
         background_tasks.add_task(background_function, params)
-        
+
         # 7. Return response
         return processed_data
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -103,7 +103,7 @@ class {Operation}Request(BaseModel):
     field1: str = Field(..., description="Field description")
     field2: EmailStr = Field(..., description="Email validation")
     optional_field: Optional[bool] = Field(False, description="Optional field")
-    
+
     @validator('field1')
     def validate_field1(cls, v):
         # Custom validation logic
@@ -117,7 +117,7 @@ class {Operation}Response(BaseModel):
     status: str
     data: Dict[str, Any]
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 ```
@@ -165,12 +165,12 @@ async def send_notification_email(email: str, subject: str, template_data: dict)
             template_name="notification",
             template_data=template_data
         )
-        
+
         if success:
             logger.info(f"Notification email sent to {email}")
         else:
             logger.error(f"Failed to send notification email to {email}")
-            
+
     except Exception as e:
         logger.error(f"Background email task failed: {e}")
 ```
@@ -184,11 +184,11 @@ async def validate_domain_input(domain: str) -> bool:
     # Basic format validation
     if not re.match(r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', domain):
         return False
-    
+
     # Security checks
     if any(domain.startswith(private) for private in PRIVATE_DOMAINS):
         return False
-    
+
     return True
 ```
 
@@ -197,12 +197,12 @@ async def validate_domain_input(domain: str) -> bool:
 def check_rate_limit(db: Session, identifier: str, limit: int, period: str) -> bool:
     """Check if operation is within rate limits."""
     current_period = datetime.now().strftime(f"%Y-{period}")
-    
+
     usage = db.query(UsageModel).filter(
         UsageModel.identifier == identifier,
         UsageModel.period == current_period
     ).first()
-    
+
     return not (usage and usage.count >= limit)
 ```
 
@@ -235,22 +235,22 @@ logger.error(f"Failed to process {operation}: {error_details}")
 async def check_domain(...):
     """
     Perform comprehensive domain security analysis.
-    
-    This endpoint analyzes domain DNS records including MX, SPF, DKIM, 
+
+    This endpoint analyzes domain DNS records including MX, SPF, DKIM,
     and DMARC configurations, providing a security score and recommendations.
-    
+
     **Rate Limiting**: 5 checks per domain per month
-    
+
     **Parameters:**
     - **domain**: Domain name to analyze (e.g., example.com)
     - **email**: Email address for results delivery
     - **opt_in_marketing**: Whether to receive marketing communications
-    
+
     **Returns:**
     - Comprehensive security analysis with scoring
     - DNS record details and validation results
     - Security recommendations and issue identification
-    
+
     **Example Response:**
     ```json
     {
@@ -271,7 +271,7 @@ async def check_domain(...):
 def test_domain_validation():
     # Valid cases
     assert await is_valid_domain("example.com") == True
-    
+
     # Invalid cases
     assert await is_valid_domain("localhost") == False
     assert await is_valid_domain("invalid..domain") == False
@@ -285,7 +285,7 @@ def test_check_domain_endpoint(client, db_session):
         "email": "test@example.com",
         "opt_in_marketing": False
     })
-    
+
     assert response.status_code == 200
     assert response.json()["domain"] == "test.com"
 ```

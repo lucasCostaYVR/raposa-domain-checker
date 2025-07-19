@@ -49,11 +49,11 @@ show_status() {
 health_check() {
     log "Checking API health..."
     echo ""
-    
+
     info "Production Health Check:"
     curl -s https://api.domainchecker.raposa.tech/healthz/ | jq '.' 2>/dev/null || echo "Production API not responding"
     echo ""
-    
+
     info "Development Health Check:"
     curl -s https://stage.domainchecker.raposa.tech/healthz/ | jq '.' 2>/dev/null || echo "Development API not responding"
     echo ""
@@ -62,28 +62,28 @@ health_check() {
 # Deploy to development
 deploy_dev() {
     log "Deploying to development environment..."
-    
+
     # Ensure we're on develop branch
     current_branch=$(git branch --show-current)
     if [ "$current_branch" != "develop" ]; then
         warn "Current branch is $current_branch, switching to develop..."
         git checkout develop
     fi
-    
+
     # Check for uncommitted changes
     if [ -n "$(git status --porcelain)" ]; then
         error "You have uncommitted changes. Please commit or stash them first."
         git status --short
         exit 1
     fi
-    
+
     # Pull latest changes
     git pull origin develop
-    
+
     # Push to trigger deployment
     log "Pushing to develop branch (triggers automatic deployment)..."
     git push origin develop
-    
+
     log "Development deployment triggered! Check Railway dashboard for progress."
     info "URL: https://stage.domainchecker.raposa.tech"
 }
@@ -91,29 +91,29 @@ deploy_dev() {
 # Deploy to production
 deploy_prod() {
     log "Deploying to production environment..."
-    
+
     # Ensure we're on main branch
     current_branch=$(git branch --show-current)
     if [ "$current_branch" != "main" ]; then
         warn "Current branch is $current_branch, switching to main..."
         git checkout main
     fi
-    
+
     # Check for uncommitted changes
     if [ -n "$(git status --porcelain)" ]; then
         error "You have uncommitted changes. Please commit or stash them first."
         git status --short
         exit 1
     fi
-    
+
     # Merge develop into main
     log "Merging develop branch into main..."
     git merge develop
-    
+
     # Push to trigger deployment
     log "Pushing to main branch (triggers automatic deployment)..."
     git push origin main
-    
+
     log "Production deployment triggered! Check Railway dashboard for progress."
     info "URL: https://api.domainchecker.raposa.tech"
 }
@@ -159,7 +159,7 @@ switch_env() {
         error "Invalid environment. Use 'dev' or 'prod'"
         exit 1
     fi
-    
+
     show_status
 }
 
@@ -170,18 +170,18 @@ create_migration() {
         echo "Usage: $0 migrate \"Add new column to users\""
         exit 1
     fi
-    
+
     log "Creating new database migration: $1"
-    
+
     # Ensure we're in the correct directory
     if [ ! -f "alembic.ini" ]; then
         error "alembic.ini not found. Run this from the project root."
         exit 1
     fi
-    
+
     # Generate migration
     alembic revision --autogenerate -m "$1"
-    
+
     log "Migration created successfully!"
     warn "Remember to review the generated migration file before deploying."
 }
@@ -206,7 +206,7 @@ set_var() {
         echo "Usage: $0 setvar VARIABLE_NAME value"
         exit 1
     fi
-    
+
     log "Setting environment variable: $1"
     railway variables set "$1=$2"
     log "Variable set successfully!"
@@ -215,15 +215,15 @@ set_var() {
 # Quick project setup
 setup_project() {
     log "Setting up Railway project links..."
-    
+
     # Link to production environment
     info "Linking production environment..."
     railway link -e production -s raposa-app-api
-    
+
     # Switch to development
-    info "Linking development environment..."  
+    info "Linking development environment..."
     railway link -e development -s raposa-stage
-    
+
     log "Project setup completed!"
     show_status
 }
@@ -237,13 +237,13 @@ show_deployments() {
 # Full development workflow
 dev_workflow() {
     log "Starting development workflow..."
-    
+
     # Switch to development environment
     switch_env dev
-    
+
     # Check health
     health_check
-    
+
     # Show logs
     info "Recent logs:"
     railway logs --tail 10
@@ -286,7 +286,7 @@ show_help() {
 # Main script logic
 main() {
     check_railway_cli
-    
+
     case "${1:-help}" in
         "status")
             show_status

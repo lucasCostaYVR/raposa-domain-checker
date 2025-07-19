@@ -15,7 +15,7 @@ Manage Railway deployments and environments effortlessly.
 # Deploy to development
 ./scripts/railway.sh deploy-dev
 
-# Deploy to production  
+# Deploy to production
 ./scripts/railway.sh deploy-prod
 
 # Check API health
@@ -163,7 +163,7 @@ chmod +x scripts/*.sh
 ./scripts/railway.sh health
 ./scripts/railway.sh logs
 
-# Production environment  
+# Production environment
 ./scripts/railway.sh switch prod
 ./scripts/railway.sh health
 ./scripts/railway.sh deployments

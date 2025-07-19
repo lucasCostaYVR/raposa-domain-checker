@@ -2,11 +2,11 @@ from typing import Union
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from database import get_db, engine
-from models import Base, DomainCheck, DomainUsage
-from schemas import DomainCheckRequest, DomainCheckResponse
-from dns_utils import check_all_dns_records
-from email_service import get_email_service
+from src.database import get_db, engine
+from src.models import Base, DomainCheck, DomainUsage
+from src.schemas import DomainCheckRequest, DomainCheckResponse
+from src.dns_utils import check_all_dns_records
+from src.email_service import get_email_service
 import re
 import logging
 from datetime import datetime
@@ -48,21 +48,21 @@ def create_db_and_tables():
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 project_root = os.path.dirname(current_dir)
                 alembic_cfg_path = os.path.join(project_root, "alembic.ini")
-                
+
                 # Alternative paths to check for Railway deployment
                 alternative_paths = [
                     alembic_cfg_path,  # ../alembic.ini (relative to src/)
                     os.path.join(os.getcwd(), "alembic.ini"),  # ./alembic.ini (current working directory)
                     "alembic.ini",  # Just the filename (current directory)
                 ]
-                
+
                 found_config = None
                 for path in alternative_paths:
                     if os.path.exists(path):
                         found_config = path
                         logger.info(f"Found Alembic config at: {path}")
                         break
-                
+
                 # Check if alembic.ini exists
                 if not found_config:
                     logger.warning(f"Alembic config not found. Tried paths: {alternative_paths}")
@@ -143,10 +143,10 @@ def health_check_endpoint():
         except Exception as e:
             db_status = "unhealthy"
             db_error = str(e)
-        
+
         # Check if application is fully initialized
         app_status = "healthy" if database_ready else "initializing"
-        
+
         health_data = {
             "status": "ok" if db_status == "healthy" and app_status == "healthy" else "degraded",
             "database": db_status,
@@ -155,13 +155,13 @@ def health_check_endpoint():
             "timestamp": datetime.utcnow().isoformat(),
             "version": "2.0.0"
         }
-        
+
         # Add error details if any
         if db_error:
             health_data["database_error"] = db_error
-            
+
         return health_data
-        
+
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return {

@@ -8,7 +8,7 @@
 - **Auto-deploy**: Enabled on push to main
 - **Environment variables**: Production settings
 
-### Development Environment (develop branch)  
+### Development Environment (develop branch)
 - **Branch**: `develop`
 - **URL**: stage.domainchecker.raposa.tech
 - **Auto-deploy**: Enabled on push to develop
@@ -66,7 +66,7 @@ railway service connect --branch main
 
 ### To connect development to develop branch:
 ```bash
-railway environment use development  
+railway environment use development
 railway service connect --branch develop
 ```
 

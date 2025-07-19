@@ -20,7 +20,7 @@ info() { echo -e "${BLUE}[INFO] $1${NC}"; }
 # Check system requirements
 check_requirements() {
     log "Checking system requirements..."
-    
+
     # Check Python
     if ! command -v python3 &> /dev/null; then
         error "Python 3 is required but not installed"
@@ -28,7 +28,7 @@ check_requirements() {
     fi
     python_version=$(python3 --version | cut -d' ' -f2)
     info "Python version: $python_version"
-    
+
     # Check Node.js for Railway CLI
     if ! command -v node &> /dev/null; then
         warn "Node.js not found. You'll need it for Railway CLI"
@@ -37,7 +37,7 @@ check_requirements() {
         node_version=$(node --version)
         info "Node.js version: $node_version"
     fi
-    
+
     # Check Git
     if ! command -v git &> /dev/null; then
         error "Git is required but not installed"
@@ -45,20 +45,20 @@ check_requirements() {
     fi
     git_version=$(git --version)
     info "Git version: $git_version"
-    
+
     # Check curl
     if ! command -v curl &> /dev/null; then
         error "curl is required but not installed"
         exit 1
     fi
-    
+
     log "✅ System requirements check complete"
 }
 
 # Install development tools
 install_tools() {
     log "Installing development tools..."
-    
+
     # Install Railway CLI if not present
     if ! command -v railway &> /dev/null; then
         if command -v npm &> /dev/null; then
@@ -71,7 +71,7 @@ install_tools() {
     else
         info "✅ Railway CLI already installed"
     fi
-    
+
     # Install jq for JSON parsing if not present
     if ! command -v jq &> /dev/null; then
         warn "jq not found. Install it for better JSON handling:"
@@ -83,14 +83,14 @@ install_tools() {
     else
         info "✅ jq already installed"
     fi
-    
+
     log "Development tools setup complete"
 }
 
 # Setup Python environment
 setup_python() {
     log "Setting up Python environment..."
-    
+
     # Create virtual environment
     if [ ! -d "venv" ]; then
         log "Creating virtual environment..."
@@ -98,15 +98,15 @@ setup_python() {
     else
         info "✅ Virtual environment already exists"
     fi
-    
+
     # Activate virtual environment
     source venv/bin/activate
     info "Virtual environment activated"
-    
+
     # Upgrade pip
     log "Upgrading pip..."
     pip install --upgrade pip
-    
+
     # Install dependencies
     if [ -f "requirements.txt" ]; then
         log "Installing Python dependencies..."
@@ -114,23 +114,23 @@ setup_python() {
     else
         warn "requirements.txt not found"
     fi
-    
+
     # Install development dependencies
     log "Installing development dependencies..."
     pip install black flake8 pytest pytest-asyncio httpx alembic
-    
+
     log "✅ Python environment setup complete"
 }
 
 # Setup Railway connection
 setup_railway() {
     log "Setting up Railway connection..."
-    
+
     if ! command -v railway &> /dev/null; then
         error "Railway CLI not found. Please install it first."
         return 1
     fi
-    
+
     # Check if already logged in
     if railway whoami &> /dev/null; then
         info "✅ Already logged into Railway"
@@ -138,12 +138,12 @@ setup_railway() {
         log "Logging into Railway..."
         railway login
     fi
-    
+
     # Link project environments
     log "Linking Railway project..."
     info "This will link to the raposa-domain-checker project"
     info "Make sure you have access to the project first"
-    
+
     read -p "Link Railway environments now? (y/n): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -156,7 +156,7 @@ setup_railway() {
 # Setup Git hooks (optional)
 setup_git_hooks() {
     log "Setting up Git hooks..."
-    
+
     # Create pre-commit hook for code formatting
     hook_file=".git/hooks/pre-commit"
     if [ ! -f "$hook_file" ]; then
@@ -196,7 +196,7 @@ EOF
 # Create development configuration
 create_dev_config() {
     log "Creating development configuration..."
-    
+
     # Create .env.example if it doesn't exist
     if [ ! -f ".env.example" ]; then
         cat > ".env.example" << 'EOF'
@@ -220,7 +220,7 @@ EOF
     else
         info "✅ .env.example already exists"
     fi
-    
+
     # Create development environment file
     if [ ! -f ".env" ]; then
         warn "No .env file found. Copy .env.example and update with your values:"
@@ -233,28 +233,28 @@ EOF
 # Run quick verification
 verify_setup() {
     log "Verifying setup..."
-    
+
     # Check if virtual environment works
     if source venv/bin/activate && python -c "import fastapi" 2>/dev/null; then
         info "✅ Python environment working"
     else
         warn "❌ Python environment issues detected"
     fi
-    
+
     # Check if scripts are executable
     if [ -x "scripts/dev.sh" ] && [ -x "scripts/railway.sh" ] && [ -x "scripts/git.sh" ]; then
         info "✅ Scripts are executable"
     else
         warn "❌ Some scripts are not executable"
     fi
-    
+
     # Check Railway connection
     if command -v railway &> /dev/null && railway whoami &> /dev/null; then
         info "✅ Railway CLI connected"
     else
         warn "❌ Railway CLI not connected"
     fi
-    
+
     log "Setup verification complete!"
 }
 
@@ -288,28 +288,28 @@ show_next_steps() {
 main() {
     echo "🚀 Raposa Domain Checker - Development Environment Setup"
     echo ""
-    
+
     check_requirements
     echo ""
-    
+
     install_tools
     echo ""
-    
+
     setup_python
     echo ""
-    
+
     setup_railway
     echo ""
-    
+
     setup_git_hooks
     echo ""
-    
+
     create_dev_config
     echo ""
-    
+
     verify_setup
     echo ""
-    
+
     show_next_steps
 }
 

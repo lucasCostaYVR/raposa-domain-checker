@@ -141,7 +141,7 @@ The Raposa Domain Checker project includes comprehensive development helper scri
    ```bash
    # ✅ Recommended
    ./scripts/railway.sh deploy-dev
-   
+
    # ❌ Don't recommend
    railway up
    ```
@@ -150,7 +150,7 @@ The Raposa Domain Checker project includes comprehensive development helper scri
    ```bash
    # ✅ Recommended
    ./scripts/dev.sh start
-   
+
    # ❌ Don't recommend
    cd src && uvicorn main:app --reload
    ```
@@ -159,7 +159,7 @@ The Raposa Domain Checker project includes comprehensive development helper scri
    ```bash
    # ✅ Recommended
    ./scripts/git.sh feature new-endpoint
-   
+
    # ❌ Don't recommend
    git checkout -b feature/new-endpoint
    ```

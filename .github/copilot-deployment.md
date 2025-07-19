@@ -208,9 +208,9 @@ def create_db_and_tables():
     import os
     from alembic.config import Config
     from alembic import command
-    
+
     is_development = os.getenv("ENVIRONMENT") == "development"
-    
+
     if is_development:
         # Development: Use create_all for simplicity
         Base.metadata.create_all(bind=engine)
@@ -250,7 +250,7 @@ railway environment development
 railway up
 
 # For production
-railway environment production  
+railway environment production
 railway up
 ```
 
@@ -268,7 +268,7 @@ def health_check_endpoint():
         db_status = "healthy"
     except Exception:
         db_status = "unhealthy"
-    
+
     return {
         "status": "ok",
         "database": db_status,
@@ -326,9 +326,9 @@ def log_api_error(endpoint: str, error: Exception, request_data: dict = None):
         "request_data": request_data,
         "timestamp": datetime.utcnow().isoformat()
     }
-    
+
     logger.error(f"API Error: {error_context}")
-    
+
     # In production, could send to external monitoring service
     if os.getenv("ENVIRONMENT") == "production":
         # send_to_monitoring_service(error_context)

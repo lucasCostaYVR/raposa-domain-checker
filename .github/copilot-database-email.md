@@ -59,7 +59,7 @@ Base = declarative_base()
 
 class BaseModel(Base):
     __abstract__ = True
-    
+
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -69,29 +69,29 @@ class BaseModel(Base):
 ```python
 class DomainCheck(Base):
     __tablename__ = "domain_checks"
-    
+
     # Primary fields
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, nullable=False, index=True)
     domain = Column(String, nullable=False, index=True)
-    
+
     # DNS record fields (store as JSON)
     mx_record = Column(Text)  # JSON string
     spf_record = Column(Text)  # JSON string
     dkim_record = Column(Text)  # JSON string
     dmarc_record = Column(Text)  # JSON string
-    
+
     # Analysis results
     score = Column(Integer, nullable=False)
     grade = Column(String(5), nullable=False)
     issues = Column(Text)  # JSON array of issues
     recommendations = Column(Text)  # JSON array of recommendations
     security_summary = Column(Text)  # JSON object
-    
+
     # Metadata
     opt_in_marketing = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Indexes for performance
     __table_args__ = (
         Index('idx_domain_email', 'domain', 'email'),
@@ -130,16 +130,16 @@ depends_on = None
 
 def upgrade():
     # Add new column
-    op.add_column('domain_checks', 
+    op.add_column('domain_checks',
                   sa.Column('security_summary', sa.Text(), nullable=True))
-    
+
     # Add index if needed
     op.create_index('idx_security_summary', 'domain_checks', ['security_summary'])
 
 def downgrade():
     # Remove index first
     op.drop_index('idx_security_summary', 'domain_checks')
-    
+
     # Remove column
     op.drop_column('domain_checks', 'security_summary')
 ```
@@ -167,7 +167,7 @@ def create_domain_check_with_usage(db: Session, check_data: dict, usage_data: di
         # Create domain check
         domain_check = DomainCheck(**check_data)
         db.add(domain_check)
-        
+
         # Update or create usage record
         usage = db.query(DomainUsage).filter_by(**usage_filter).first()
         if usage:
@@ -176,12 +176,12 @@ def create_domain_check_with_usage(db: Session, check_data: dict, usage_data: di
         else:
             usage = DomainUsage(**usage_data)
             db.add(usage)
-        
+
         # Commit all changes
         db.commit()
         db.refresh(domain_check)
         return domain_check
-        
+
     except Exception as e:
         db.rollback()
         logger.error(f"Transaction failed: {e}")
@@ -205,7 +205,7 @@ class EmailService:
             loader=FileSystemLoader(template_dir),
             autoescape=True
         )
-        
+
     def _prepare_template_data(self, **kwargs) -> dict:
         """Prepare common template data."""
         base_data = {
@@ -230,15 +230,15 @@ async def send_domain_report(self, to_email: str, domain: str, analysis_results:
             recipient_email=to_email,
             **kwargs
         )
-        
+
         # Render HTML template
         html_template = self.jinja_env.get_template('domain_report.html')
         html_content = html_template.render(**template_data)
-        
+
         # Render text template
         text_template = self.jinja_env.get_template('domain_report.txt')
         text_content = text_template.render(**template_data)
-        
+
         # Send email
         return await self._send_email(
             to_email=to_email,
@@ -246,7 +246,7 @@ async def send_domain_report(self, to_email: str, domain: str, analysis_results:
             html_content=html_content,
             text_content=text_content
         )
-        
+
     except Exception as e:
         logger.error(f"Failed to send domain report to {to_email}: {e}")
         return False
@@ -281,7 +281,7 @@ async def send_domain_report(self, to_email: str, domain: str, analysis_results:
             <h1>{{ company_name }} Domain Security Report</h1>
             <p>Comprehensive analysis for {{ domain }}</p>
         </div>
-        
+
         <div class="content">
             <div class="score-section">
                 <h2>Security Score</h2>
@@ -289,7 +289,7 @@ async def send_domain_report(self, to_email: str, domain: str, analysis_results:
                     {{ analysis_results.score }}/100 (Grade: {{ analysis_results.grade }})
                 </div>
             </div>
-            
+
             {% if analysis_results.issues %}
             <div class="issues-section">
                 <h3>Security Issues Found</h3>
@@ -300,7 +300,7 @@ async def send_domain_report(self, to_email: str, domain: str, analysis_results:
                 </ul>
             </div>
             {% endif %}
-            
+
             {% if analysis_results.recommendations %}
             <div class="recommendations-section">
                 <h3>Recommendations</h3>
@@ -312,7 +312,7 @@ async def send_domain_report(self, to_email: str, domain: str, analysis_results:
             </div>
             {% endif %}
         </div>
-        
+
         <div class="footer">
             <p>&copy; {{ current_year }} {{ company_name }}. All rights reserved.</p>
             <p>Questions? Contact us at {{ support_email }}</p>
@@ -381,21 +381,21 @@ async def _send_email(self, to_email: str, subject: str, html_content: str, text
             to_emails=to_email,
             subject=subject
         )
-        
+
         # Add content
         mail.add_content(Content("text/plain", text_content))
         mail.add_content(Content("text/html", html_content))
-        
+
         # Send email
         response = self.sg_client.send(mail)
-        
+
         if response.status_code in [200, 201, 202]:
             logger.info(f"Email sent successfully to {to_email}")
             return True
         else:
             logger.error(f"SendGrid API error: {response.status_code}")
             return False
-            
+
     except Exception as e:
         logger.error(f"Email sending failed: {e}")
         return False
@@ -409,27 +409,27 @@ async def send_domain_report_email(email: str, domain: str, analysis_results: di
     """Background task for sending domain reports."""
     try:
         email_service = get_email_service()
-        
+
         # Check if first-time user
         is_first_check = await check_if_first_time_user(email)
-        
+
         if is_first_check:
             # Send welcome email
             await email_service.send_welcome_email(email, domain)
-        
+
         # Send domain report
         success = await email_service.send_domain_report(
             to_email=email,
             domain=domain,
             analysis_results=analysis_results
         )
-        
+
         # Log result
         if success:
             logger.info(f"Domain report sent successfully to {email}")
         else:
             logger.error(f"Failed to send domain report to {email}")
-            
+
     except Exception as e:
         logger.error(f"Background email task failed: {e}")
 ```
