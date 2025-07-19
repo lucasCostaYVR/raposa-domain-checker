@@ -8,6 +8,7 @@ from src.models import Base, DomainCheck, DomainUsage
 from src.schemas import DomainCheckRequest, DomainCheckResponse
 from src.dns_utils import check_all_dns_records
 from src.email_service import get_email_service
+# Force redeploy to clear cached database connection state
 import re
 import logging
 from datetime import datetime
