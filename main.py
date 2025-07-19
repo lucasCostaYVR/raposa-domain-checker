@@ -2,6 +2,7 @@ from typing import Union
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from src.database import get_db, engine
 from src.models import Base, DomainCheck, DomainUsage
 from src.schemas import DomainCheckRequest, DomainCheckResponse
@@ -139,7 +140,7 @@ def health_check_endpoint():
         db_error = None
         try:
             db = next(get_db())
-            db.execute("SELECT 1")
+            db.execute(text("SELECT 1"))
         except Exception as e:
             db_status = "unhealthy"
             db_error = str(e)
