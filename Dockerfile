@@ -40,6 +40,10 @@ COPY requirements.txt /tmp/requirements.txt
 # copy the project code into the container's working directory
 COPY ./src /code
 
+# copy alembic configuration and migration files
+COPY alembic.ini /code/alembic.ini
+COPY ./alembic /code/alembic
+
 # Install the Python project requirements
 RUN pip install -r /tmp/requirements.txt
 
