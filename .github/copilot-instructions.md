@@ -34,6 +34,8 @@ This is a FastAPI-based domain security analysis API that provides comprehensive
 - Use background tasks for email sending
 
 ### Database Patterns
+- **NEVER use SQLite** - Always use PostgreSQL for consistency between development and production
+- **PostgreSQL only**: Use PostgreSQL for all environments (development, staging, production)
 - Use SQLAlchemy declarative models
 - Implement proper session management
 - Use database transactions for multi-table operations
@@ -61,6 +63,12 @@ scripts/                 # Development automation scripts
 **Important**: `main.py` is located in the project root (not in `src/`) with imports using `from src.module` pattern for Railway deployment compatibility.
 
 ## Key Components
+
+### Freemium Rate Limiting (Option C Implementation)
+- **Anonymous users**: 1 check per domain per month (IP-based tracking)
+- **Registered users**: 15 checks per domain per month (email-based tracking)
+- **Progressive enhancement**: First check free, email required for additional checks
+- **Conversion messaging**: Clear upgrade prompts when limits are reached
 
 ### Environment Configuration
 - Development mode: `ENVIRONMENT=development` (enables /docs, uses create_all)
@@ -201,7 +209,7 @@ The project includes comprehensive helper scripts in the `scripts/` directory fo
 
 ## Security Considerations
 - Validate domain input to prevent injection attacks
-- Rate limiting on domain checks (5 per domain per month)
+- Rate limiting on domain checks (1 for anonymous, 15 for registered users per domain per month)
 - CORS configuration for trusted origins only
 - Environment-based security settings
 

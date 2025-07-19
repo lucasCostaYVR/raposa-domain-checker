@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 class DomainCheckRequest(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
     domain: str = Field(..., min_length=1, max_length=255)
     opt_in_marketing: bool = False
 
@@ -33,7 +33,7 @@ class DMARCRecordResult(DNSRecordResult):
 
 class DomainCheckResponse(BaseModel):
     id: int
-    email: str
+    email: Optional[str] = None  # Now optional to support anonymous users
     domain: str
 
     # Enhanced DNS results with user-friendly explanations

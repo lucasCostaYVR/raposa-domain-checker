@@ -192,13 +192,45 @@ async def send_domain_report_email(email: str, domain: str, analysis_results: di
     except Exception as e:
         logger.error(f"Error in background email task for {email}, domain {domain}: {e}")
 
+async def check_rate_limits(
+    domain: str, 
+    email: str = None, 
+    db: Session = None
+) -> tuple[bool, str]:
+    """
+    Check rate limits for domain checks.
+        Returns (is_allowed, limit_message)
+    """
+    current_month = datetime.now().strftime("%Y-%m")
+    
+    # Check domain-based limits regardless of email
+    domain_usage = db.query(DomainUsage).filter(
+        DomainUsage.domain == domain,
+        DomainUsage.month_year == current_month
+    ).first()
+
+    if email:
+        # Registered user - 15 checks per domain per month
+        if domain_usage and domain_usage.check_count >= 15:
+            return False, "Domain check limit exceeded. Maximum 15 checks per domain per month. Create an account for more checks!"
+        return True, ""
+    else:
+        # Anonymous user - 1 check per domain per month (domain-based, not IP)
+        if domain_usage and domain_usage.check_count >= 1:
+            return False, "You've already checked this domain this month. Provide an email address for additional checks!"
+        return True, ""
+
 @app.post("/check-domain", response_model=DomainCheckResponse)
-async def check_domain(request: DomainCheckRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def check_domain(
+    request: DomainCheckRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """
     Perform comprehensive domain security analysis including MX, SPF, DKIM, and DMARC records.
 
     - **domain**: Domain name to analyze (e.g., example.com)
-    - **email**: Email address for results delivery
+    - **email**: Email address for results delivery (optional for first check)
     - **opt_in_marketing**: Whether to receive marketing emails
 
     Returns detailed security analysis with scoring and recommendations.
@@ -212,20 +244,17 @@ async def check_domain(request: DomainCheckRequest, background_tasks: Background
         if not await is_valid_domain(request.domain):
             raise HTTPException(status_code=422, detail="Invalid or unsafe domain format")
 
-        logger.info(f"Domain check requested for {request.domain} by {request.email}")
+        logger.info(f"Domain check requested for {request.domain} by {request.email or 'anonymous user'}")
 
-        # Check monthly usage limit (5 checks per domain per month)
-        current_month = datetime.now().strftime("%Y-%m")
-        domain_usage = db.query(DomainUsage).filter(
-            DomainUsage.domain == request.domain,
-            DomainUsage.month_year == current_month
-        ).first()
+        # Check rate limits using our progressive system
+        is_allowed, limit_message = await check_rate_limits(
+            domain=request.domain,
+            email=request.email,
+            db=db
+        )
 
-        if domain_usage and domain_usage.check_count >= 5:
-            raise HTTPException(
-                status_code=429,
-                detail="Domain check limit exceeded. Maximum 5 checks per domain per month."
-            )
+        if not is_allowed:
+            raise HTTPException(status_code=429, detail=limit_message)
 
         # Perform comprehensive DNS analysis
         dns_analysis = await check_all_dns_records(request.domain)
@@ -248,7 +277,14 @@ async def check_domain(request: DomainCheckRequest, background_tasks: Background
 
         db.add(domain_check)
 
-        # Update domain usage
+        # Update usage tracking - simple domain-based tracking for all users
+        current_month = datetime.now().strftime("%Y-%m")
+        
+        domain_usage = db.query(DomainUsage).filter(
+            DomainUsage.domain == request.domain,
+            DomainUsage.month_year == current_month
+        ).first()
+        
         if domain_usage:
             domain_usage.check_count += 1
             domain_usage.last_check = datetime.now()
@@ -259,36 +295,37 @@ async def check_domain(request: DomainCheckRequest, background_tasks: Background
                 month_year=current_month
             )
             db.add(domain_usage)
-
+        
         db.commit()
         db.refresh(domain_check)
 
-        # Check if this is the user's first domain check (for welcome email)
-        user_check_count = db.query(DomainCheck).filter(
-            DomainCheck.email == request.email
-        ).count()
-        is_first_check = user_check_count == 1
+        # Schedule background email sending only if email provided
+        if request.email:
+            # Check if this is the user's first domain check (for welcome email)
+            user_check_count = db.query(DomainCheck).filter(
+                DomainCheck.email == request.email
+            ).count()
+            is_first_check = user_check_count == 1
 
-        # Schedule background email sending
-        background_tasks.add_task(
-            send_domain_report_email,
-            email=request.email,
-            domain=request.domain,
-            analysis_results={
-                "domain": request.domain,
-                "score": dns_analysis["total_score"],
-                "grade": dns_analysis["grade"],
-                "mx_record": dns_analysis["mx"],
-                "spf_record": dns_analysis["spf"],
-                "dkim_record": dns_analysis["dkim"],
-                "dmarc_record": dns_analysis["dmarc"],
-                "issues": dns_analysis["issues"],
-                "recommendations": dns_analysis["recommendations"],
-                "security_summary": dns_analysis["security_summary"],
-                "created_at": domain_check.created_at.isoformat()
-            },
-            is_first_check=is_first_check
-        )
+            background_tasks.add_task(
+                send_domain_report_email,
+                email=request.email,
+                domain=request.domain,
+                analysis_results={
+                    "domain": request.domain,
+                    "score": dns_analysis["total_score"],
+                    "grade": dns_analysis["grade"],
+                    "mx_record": dns_analysis["mx"],
+                    "spf_record": dns_analysis["spf"],
+                    "dkim_record": dns_analysis["dkim"],
+                    "dmarc_record": dns_analysis["dmarc"],
+                    "issues": dns_analysis["issues"],
+                    "recommendations": dns_analysis["recommendations"],
+                    "security_summary": dns_analysis["security_summary"],
+                    "created_at": domain_check.created_at.isoformat()
+                },
+                is_first_check=is_first_check
+            )
 
         logger.info(f"Domain check completed for {request.domain} - Score: {dns_analysis['total_score']}, Grade: {dns_analysis['grade']} - Email report scheduled")
 

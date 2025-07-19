@@ -239,7 +239,7 @@ async def check_domain(...):
     This endpoint analyzes domain DNS records including MX, SPF, DKIM,
     and DMARC configurations, providing a security score and recommendations.
 
-    **Rate Limiting**: 5 checks per domain per month
+    **Rate Limiting**: 1 check per domain per month (anonymous), 15 checks per domain per month (registered)
 
     **Parameters:**
     - **domain**: Domain name to analyze (e.g., example.com)
