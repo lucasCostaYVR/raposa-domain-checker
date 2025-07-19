@@ -1,19 +1,11 @@
 {
     "build": {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "./Dockerfile",
-        "watchPatterns": [
-            "requirements.txt",
-            "src/**",
-            "railway.json",
-            "Dockerfile"
-        ]
+        "builder": "nixpacks"
     },
     "deploy": {
-      "healthcheckPath": "/healthz/",
-      "healthcheckTimeout": 300,
-      "startupTimeout": 300,
-      "restartPolicyType": "always",
-      "restartPolicyMaxRetries": 10
+        "healthcheckPath": "/healthz/",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "on_failure",
+        "startCommand": "cd src && gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
     }
 }

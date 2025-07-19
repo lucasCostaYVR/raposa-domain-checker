@@ -74,9 +74,23 @@ SENDGRID_API_KEY=SG.xxx
 SENDGRID_FROM_EMAIL=dev@raposa.tech
 ```
 
-#### Railway Environment Configuration
+#### Railway GitHub Integration Configuration
+Since you're using GitHub source instead of Dockerfile:
+
 ```bash
-# Set environment variables in Railway
+# Railway will auto-detect Python application and use:
+# - requirements.txt for dependencies
+# - Gunicorn for WSGI server
+# - PORT environment variable for binding
+
+# Railway auto-generated build process:
+# 1. pip install -r requirements.txt
+# 2. gunicorn main:app --bind 0.0.0.0:$PORT
+```
+
+#### Manual Environment Configuration (if needed)
+```bash
+# Set environment variables in Railway dashboard or CLI
 railway variables set ENVIRONMENT=production
 railway variables set DATABASE_URL=${{ Postgres.DATABASE_URL }}
 railway variables set SENDGRID_API_KEY=your_api_key
@@ -85,30 +99,48 @@ railway variables set SENDGRID_FROM_EMAIL=noreply@raposa.tech
 
 ### Branch-Based Deployment Strategy
 
-#### Production Deployment (main branch)
-```bash
-# Switch to main branch
-git checkout main
+#### Automatic GitHub Deployment Setup
+Since Railway is connected to GitHub source (not Dockerfile), deployments are now automatic:
 
-# Link to production environment
-railway environment production
-railway service raposa-app-api
+**Production Environment:**
+- **Service**: `raposa-app-api`
+- **Source**: GitHub repository `lucasCostaYVR/raposa-domain-checker`
+- **Branch**: `main`
+- **Root Directory**: `/`
+- **Build Command**: Auto-detected from `requirements.txt`
+- **Start Command**: Auto-detected from Python app
+
+**Development Environment:**
+- **Service**: `raposa-stage`
+- **Source**: GitHub repository `lucasCostaYVR/raposa-domain-checker`
+- **Branch**: `develop`
+- **Root Directory**: `/`
+- **Build Command**: Auto-detected from `requirements.txt`
+- **Start Command**: Auto-detected from Python app
+
+#### Deployment Workflow (Automatic)
+```bash
+# Deploy to development
+git checkout develop
+git add .
+git commit -m "Feature changes"
+git push origin develop
+# ↑ Automatically deploys to stage.domainchecker.raposa.tech
 
 # Deploy to production
-railway up
+git checkout main
+git merge develop
+git push origin main
+# ↑ Automatically deploys to api.domainchecker.raposa.tech
 ```
 
-#### Development Deployment (develop branch)
+#### Manual Deployment (If Needed)
 ```bash
-# Switch to develop branch
-git checkout develop
-
-# Link to development environment
-railway environment development
-railway service raposa-stage
-
-# Deploy to staging
+# Manual deployment to current linked environment
 railway up
+
+# Or redeploy latest commit
+railway redeploy
 ```
 
 ### Database Migration Management
@@ -143,16 +175,28 @@ def create_db_and_tables():
 # Generate migration locally
 alembic revision --autogenerate -m "Description of changes"
 
-# Test migration on development
+# Test migration on development (automatic)
 git checkout develop
-railway environment development
-railway up
+git add alembic/versions/
+git commit -m "Add database migration: Description of changes"
+git push origin develop
+# ↑ Automatically deploys to development with migration
 
-# Deploy to production after testing
+# Deploy to production after testing (automatic)
 git checkout main
 git merge develop
 git push origin main
-railway environment production
+# ↑ Automatically deploys to production with migration
+```
+
+#### Manual Migration Deployment (If Needed)
+```bash
+# If automatic deployment fails, manual deployment
+railway environment development
+railway up
+
+# For production
+railway environment production  
 railway up
 ```
 
@@ -180,16 +224,18 @@ def health_check_endpoint():
 ```
 
 #### Railway Health Check Configuration
-```toml
-# railway.json
+For GitHub source deployment, create a `railway.json` file in your repository root:
+
+```json
 {
   "build": {
-    "builder": "dockerfile"
+    "builder": "nixpacks"
   },
   "deploy": {
     "healthcheckPath": "/healthz/",
     "healthcheckTimeout": 300,
-    "restartPolicyType": "on_failure"
+    "restartPolicyType": "on_failure",
+    "startCommand": "gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
   }
 }
 ```
