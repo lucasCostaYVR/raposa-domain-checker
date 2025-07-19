@@ -338,8 +338,9 @@ curl -X POST "http://localhost:8000/check-domain" \
 
 ### Database Changes
 - `domain_checks.email` is now nullable
-- New `domain_checks.client_ip` column for anonymous tracking
-- New `anonymous_usage` table for IP-based rate limiting
+- Removed `anonymous_usage` table (IP-based tracking eliminated)
+- Removed `client_ip` column from `domain_checks` table
+- Uses domain-based rate limiting only via `domain_usage` table
 
 ### Backward Compatibility
 - ✅ Existing API calls with email still work exactly the same
