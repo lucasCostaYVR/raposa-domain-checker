@@ -49,24 +49,24 @@ class SendGridEmailService:
         include_pdf: bool = False
     ) -> bool:
         """Send a domain security report email using SendGrid with Jinja2 templates.
-        
+
         Args:
             to_email: The recipient's email address
             domain: The domain that was analyzed
             analysis_results: Dictionary containing all analysis results
             include_pdf: Whether to include a PDF version (not implemented yet)
-            
+
         Returns:
             bool: True if email was sent successfully, False otherwise
         """
         try:
             # Prepare template data
             template_data = self._prepare_template_data(domain, analysis_results)
-            
+
             # Render templates
             html_template = jinja_env.get_template('domain_report.html')
             text_template = jinja_env.get_template('domain_report.txt')
-            
+
             html_content = html_template.render(**template_data)
             text_content = text_template.render(**template_data)
 
@@ -92,14 +92,14 @@ class SendGridEmailService:
 
             # Send the email
             response = self.sg.send(message)
-            
+
             if response.status_code in [200, 202]:
                 logger.info(f"Domain report email sent successfully to {to_email} for {domain}")
                 return True
             else:
                 logger.error(f"Failed to send email. Status code: {response.status_code}")
                 return False
-                
+
         except Exception as e:
             logger.error(f"Error sending domain report email to {to_email} for {domain}: {e}")
             return False
@@ -288,11 +288,11 @@ class SendGridEmailService:
         """Send a welcome email after first domain check using SendGrid and Jinja2 templates."""
         try:
             subject = f"Welcome to Raposa Domain Checker!"
-            
+
             # Render welcome email template
             html_template = jinja_env.get_template('welcome_email.html')
             html_content = html_template.render(domain=domain)
-            
+
             message = Mail(
                 from_email=Email(self.from_email, self.from_name),
                 to_emails=To(to_email),

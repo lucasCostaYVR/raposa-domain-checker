@@ -551,10 +551,10 @@ def generate_recommendations(mx_result: Dict, spf_result: Dict, dkim_result: Dic
 
 def add_user_friendly_explanations(result: Dict[str, Any], record_type: str) -> Dict[str, Any]:
     """Add user-friendly explanations to DNS record results."""
-    
+
     # Create a copy to avoid modifying the original
     enhanced_result = result.copy()
-    
+
     # Record type explanations
     explanations = {
         "mx": {
@@ -614,22 +614,22 @@ def add_user_friendly_explanations(result: Dict[str, Any], record_type: str) -> 
             }
         }
     }
-    
+
     # Get explanations for this record type
     record_explanations = explanations.get(record_type, {})
-    
+
     # Add the explanations to the result
     enhanced_result["explanation"] = {
         "what_is": record_explanations.get("what_is", ""),
         "current_status": record_explanations.get("status_explanations", {}).get(result["status"], ""),
         "risk_if_misconfigured": record_explanations.get("risks", {}).get(result["status"], "")
     }
-    
+
     return enhanced_result
 
 def generate_security_summary(total_score: int, grade: str, mx_result: Dict, spf_result: Dict, dkim_result: Dict, dmarc_result: Dict) -> Dict[str, Any]:
     """Generate an overall security summary in plain English."""
-    
+
     # Determine overall security level
     if total_score >= 85:
         security_level = "Excellent"
@@ -643,14 +643,14 @@ def generate_security_summary(total_score: int, grade: str, mx_result: Dict, spf
     else:
         security_level = "Poor"
         overall_message = "Your domain has serious email security gaps. You're highly vulnerable to spoofing attacks and may experience email deliverability problems."
-    
+
     # Count configured vs missing components
     components = [mx_result, spf_result, dkim_result, dmarc_result]
     configured_count = len([c for c in components if c["status"] in ["valid", "good", "basic"]])
-    
+
     # Generate specific recommendations
     priority_actions = []
-    
+
     if mx_result["status"] == "missing":
         priority_actions.append("Set up MX records to enable email delivery")
     if spf_result["status"] == "missing":
@@ -659,7 +659,7 @@ def generate_security_summary(total_score: int, grade: str, mx_result: Dict, spf
         priority_actions.append("Configure DKIM for email authentication")
     if dmarc_result["status"] == "missing":
         priority_actions.append("Implement DMARC policy for comprehensive protection")
-    
+
     return {
         "security_level": security_level,
         "overall_message": overall_message,

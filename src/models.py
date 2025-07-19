@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, JSON, Text
 from sqlalchemy.sql import func
-from .database import Base
+from database import Base
 
 class DomainCheck(Base):
     __tablename__ = "domain_checks"

@@ -26,7 +26,7 @@ RECOMMENDATIONS FOR IMPROVEMENT:
 
 {% endif -%}
 NEED TECHNICAL SUPPORT?
-Reply to this email and our security experts will help you implement 
+Reply to this email and our security experts will help you implement
 these recommendations and improve your domain's email security.
 
 --------------------------------------------------

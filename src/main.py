@@ -2,11 +2,11 @@ from typing import Union
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from .database import get_db, engine
-from .models import Base, DomainCheck, DomainUsage
-from .schemas import DomainCheckRequest, DomainCheckResponse
-from .dns_utils import check_all_dns_records
-from .email_service import get_email_service
+from database import get_db, engine
+from models import Base, DomainCheck, DomainUsage
+from schemas import DomainCheckRequest, DomainCheckResponse
+from dns_utils import check_all_dns_records
+from email_service import get_email_service
 import re
 import logging
 from datetime import datetime
@@ -22,31 +22,75 @@ logger = logging.getLogger(__name__)
 
 def create_db_and_tables():
     import time
+    import os
     max_retries = 3
-    retry_delay = 5
+    retry_delay = 2  # Shorter delay for development
+
+    # Check if we're in development mode
+    is_development = os.getenv("ENVIRONMENT") == "development"
 
     for attempt in range(max_retries):
         try:
-            logger.info(f"Creating database tables... (attempt {attempt + 1}/{max_retries})")
-            Base.metadata.create_all(bind=engine)
-            logger.info("Database tables created successfully.")
-            return True
+            if is_development:
+                logger.info(f"Development mode: Using create_all for database setup (attempt {attempt + 1}/{max_retries})")
+                # In development, just use create_all for simplicity
+                Base.metadata.create_all(bind=engine)
+                logger.info("Database tables created successfully in development mode.")
+                return True
+            else:
+                logger.info(f"Production mode: Running database migrations... (attempt {attempt + 1}/{max_retries})")
+
+                # Run Alembic migrations for production
+                from alembic.config import Config
+                from alembic import command
+
+                # Configure Alembic with correct path
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                project_root = os.path.dirname(current_dir)
+                alembic_cfg_path = os.path.join(project_root, "alembic.ini")
+
+                # Check if alembic.ini exists
+                if not os.path.exists(alembic_cfg_path):
+                    logger.warning(f"Alembic config not found at {alembic_cfg_path}, falling back to create_all")
+                    raise FileNotFoundError("Alembic config not found")
+
+                alembic_cfg = Config(alembic_cfg_path)
+
+                # Run migrations to head
+                command.upgrade(alembic_cfg, "head")
+                logger.info("Database migrations completed successfully.")
+                return True
+
         except Exception as e:
-            logger.error(f"Attempt {attempt + 1} failed: {e}")
+            logger.error(f"Database setup attempt {attempt + 1} failed: {e}")
             if attempt < max_retries - 1:
                 logger.info(f"Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
             else:
-                logger.error("All database connection attempts failed.")
+                logger.error("All database setup attempts failed.")
+                # Final fallback to create_all
+                try:
+                    logger.info("Final fallback: Using create_all...")
+                    Base.metadata.create_all(bind=engine)
+                    logger.info("Database tables created successfully via fallback.")
+                    return True
+                except Exception as fallback_e:
+                    logger.error(f"Fallback create_all also failed: {fallback_e}")
     return False
 
 # Global flag to track if database is ready
 database_ready = False
 
+# Environment-based docs configuration
+docs_url = "/docs" if os.getenv("ENVIRONMENT") == "development" else None
+redoc_url = "/redoc" if os.getenv("ENVIRONMENT") == "development" else None
+
 app = FastAPI(
     title="Raposa Domain Checker API",
     description="Advanced API for checking domain DNS records including MX, SPF, DKIM, and DMARC with intelligent scoring and email reporting",
-    version="2.0.0"
+    version="2.0.0",
+    docs_url=docs_url,
+    redoc_url=redoc_url
 )
 
 # Configure CORS for frontend development with custom origin checking

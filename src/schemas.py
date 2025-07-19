@@ -47,7 +47,7 @@ class DomainCheckResponse(BaseModel):
     grade: Optional[str] = None
     issues: Optional[List[str]] = None
     recommendations: Optional[List[str]] = None
-    
+
     # New user-friendly summary
     security_summary: Optional[Dict[str, Any]] = None
 
