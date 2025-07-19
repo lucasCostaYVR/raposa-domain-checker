@@ -11,4 +11,4 @@ cmds = ["python -m pip install -r requirements.txt"]
 cmds = ["echo 'Build complete'"]
 
 [start]
-cmd = "python -m alembic upgrade head && gunicorn src.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keepalive 5"
+cmd = "gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5"
