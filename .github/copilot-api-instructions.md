@@ -1,6 +1,42 @@
 # API Development Instructions
 
-## FastAPI Best Practices for Raposa Domain Checker
+## Development Workflow Integration
+
+### Using Development Scripts
+Always use the provided helper scripts for development tasks:
+
+```bash
+# Start development session
+./scripts/dev.sh session            # Sets up environment and starts server
+
+# Test API changes
+./scripts/dev.sh test               # Quick API endpoint testing
+curl -s http://localhost:8000/healthz/ | jq '.'
+
+# Format and validate code
+./scripts/dev.sh format             # Black formatting
+./scripts/dev.sh lint               # Flake8 linting
+./scripts/dev.sh tests              # Run test suite
+```
+
+### Feature Development Pattern
+```bash
+# 1. Start new feature
+./scripts/git.sh feature new-endpoint
+
+# 2. Develop and test locally
+./scripts/dev.sh start
+# Make changes, test with ./scripts/dev.sh test
+
+# 3. Commit and deploy to staging
+./scripts/git.sh commit "Add new endpoint"
+./scripts/git.sh finish-feature     # Auto-deploys to staging
+
+# 4. Deploy to production when ready
+./scripts/git.sh release            # Deploys to production
+```
+
+## FastAPI Development Patterns
 
 ### Endpoint Development Pattern
 When creating new API endpoints, follow this structure:

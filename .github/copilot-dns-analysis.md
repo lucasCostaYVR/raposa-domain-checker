@@ -1,6 +1,44 @@
 # DNS Analysis and Security Instructions
 
-## DNS Record Analysis Patterns
+## DNS Analysis Development Workflow
+
+### Using Development Scripts for DNS Features
+When developing DNS analysis features, use the provided scripts:
+
+```bash
+# Start development environment
+./scripts/dev.sh session           # Sets up environment with all dependencies
+
+# Test DNS analysis locally
+./scripts/dev.sh start             # Start dev server
+curl -X POST http://localhost:8000/check-domain 
+  -H "Content-Type: application/json" 
+  -d '{"domain": "example.com", "email": "test@example.com"}'
+
+# Code quality for DNS modules
+./scripts/dev.sh format            # Format dns_utils.py and related files
+./scripts/dev.sh lint              # Lint DNS analysis code
+./scripts/dev.sh tests             # Run DNS analysis tests
+```
+
+### Feature Development Pattern for DNS Analysis
+```bash
+# 1. Start new DNS feature
+./scripts/git.sh feature dns-analysis-improvement
+
+# 2. Develop and test DNS functionality
+./scripts/dev.sh start
+# Modify src/dns_utils.py, test with sample domains
+
+# 3. Deploy to staging for testing
+./scripts/git.sh commit "Improve DNS analysis accuracy"
+./scripts/git.sh finish-feature    # Test on stage.domainchecker.raposa.tech
+
+# 4. Deploy to production
+./scripts/git.sh release           # Deploy to api.domainchecker.raposa.tech
+```
+
+## DNS Security Analysis Patterns
 
 ### DNS Utilities Development
 

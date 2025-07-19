@@ -67,6 +67,57 @@ src/
 - Graceful fallback to create_all if migrations fail
 - Retry logic for database connection issues
 
+## Development Scripts
+
+The project includes comprehensive helper scripts in the `scripts/` directory for streamlined development and deployment workflows:
+
+### Railway Management (`scripts/railway.sh`)
+```bash
+# Deploy to environments
+./scripts/railway.sh deploy-dev      # Deploy to development
+./scripts/railway.sh deploy-prod     # Deploy to production
+./scripts/railway.sh health          # Check API health for both environments
+./scripts/railway.sh switch dev/prod # Switch between environments
+./scripts/railway.sh logs            # View current environment logs
+./scripts/railway.sh rollback        # Emergency rollback
+./scripts/railway.sh migrate "msg"   # Create database migration
+```
+
+### Development Tools (`scripts/dev.sh`)
+```bash
+# Local development
+./scripts/dev.sh start              # Start development server with hot reload
+./scripts/dev.sh setup              # Setup complete development environment
+./scripts/dev.sh test               # Test API endpoints locally
+./scripts/dev.sh format             # Format code with Black
+./scripts/dev.sh lint               # Lint code with flake8
+./scripts/dev.sh tests              # Run test suite
+./scripts/dev.sh session            # Full development startup workflow
+```
+
+### Git Workflow (`scripts/git.sh`)
+```bash
+# Feature development workflow
+./scripts/git.sh feature <name>     # Start new feature branch
+./scripts/git.sh commit "message"   # Quick commit with proper formatting
+./scripts/git.sh finish-feature     # Merge feature to develop (auto-deploys)
+./scripts/git.sh release            # Release develop to main (production)
+./scripts/git.sh status             # Comprehensive git status
+./scripts/git.sh sync               # Sync with remote safely
+```
+
+### Environment Setup (`scripts/setup.sh`)
+```bash
+# One-command setup for new developers
+./scripts/setup.sh                  # Complete development environment setup
+```
+
+**Always use these scripts** instead of manual commands for:
+- Deployments (use railway.sh instead of manual Railway CLI)
+- Environment switching (automated safety checks)
+- Feature development (proper branch workflow)
+- Code formatting and testing (consistent standards)
+
 ## Development Guidelines
 
 ### Adding New Features

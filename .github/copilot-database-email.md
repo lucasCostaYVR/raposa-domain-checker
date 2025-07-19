@@ -1,6 +1,45 @@
 # Database and Email Service Instructions
 
-## Database Development Patterns
+## Database Development Workflow
+
+### Using Database Scripts
+Always use the provided scripts for database operations:
+
+```bash
+# Create new migration
+./scripts/railway.sh migrate "Add user authentication table"
+# OR for local development
+./scripts/dev.sh migration "Add user roles column"
+
+# Reset development database
+./scripts/dev.sh db-reset
+
+# Deploy migration to staging
+./scripts/git.sh finish-feature     # Auto-deploys with migration
+
+# Deploy to production
+./scripts/git.sh release            # Runs migration in production
+```
+
+### Migration Development Pattern
+```bash
+# 1. Start feature branch
+./scripts/git.sh feature user-auth
+
+# 2. Create and test migration locally
+./scripts/dev.sh migration "Add user authentication"
+# Review generated migration file
+./scripts/dev.sh db-reset           # Test migration
+
+# 3. Deploy to staging for testing
+./scripts/git.sh commit "Add user auth migration"
+./scripts/git.sh finish-feature
+
+# 4. Deploy to production
+./scripts/git.sh release
+```
+
+## Database Management Patterns
 
 ### SQLAlchemy Model Development
 

@@ -1,5 +1,47 @@
 # Deployment and Infrastructure Instructions
 
+## Automated Deployment with Helper Scripts
+
+### Recommended Deployment Workflow
+**Always use the provided scripts instead of manual commands:**
+
+```bash
+# Development deployment
+./scripts/railway.sh deploy-dev     # Deploys current branch to staging
+
+# Production deployment
+./scripts/railway.sh deploy-prod    # Merges develop→main, deploys to production
+
+# Environment management
+./scripts/railway.sh switch dev     # Switch to development environment
+./scripts/railway.sh switch prod    # Switch to production environment
+./scripts/railway.sh health         # Check both environments
+./scripts/railway.sh status         # Current Railway status
+```
+
+### Emergency Operations
+```bash
+# Quick rollback
+./scripts/railway.sh rollback
+
+# View logs
+./scripts/railway.sh logs
+
+# Check deployments
+./scripts/railway.sh deployments
+```
+
+### Git-Integrated Deployment
+```bash
+# Feature development (auto-deploys to staging)
+./scripts/git.sh feature new-feature
+./scripts/git.sh commit "Add feature"
+./scripts/git.sh finish-feature     # Triggers staging deployment
+
+# Production release
+./scripts/git.sh release            # Triggers production deployment
+```
+
 ## Railway Deployment Patterns
 
 ### Docker Configuration
@@ -134,13 +176,21 @@ git push origin main
 # ↑ Automatically deploys to api.domainchecker.raposa.tech
 ```
 
-#### Manual Deployment (If Needed)
+### Manual Deployment (If Needed)
+**⚠️ Only use manual deployment if automated scripts fail:**
+
 ```bash
 # Manual deployment to current linked environment
 railway up
 
 # Or redeploy latest commit
 railway redeploy
+```
+
+**Prefer using scripts:**
+```bash
+./scripts/railway.sh deploy-dev    # For development
+./scripts/railway.sh deploy-prod   # For production
 ```
 
 ### Database Migration Management
@@ -171,25 +221,23 @@ def create_db_and_tables():
 ```
 
 #### Migration Deployment Process
-```bash
-# Generate migration locally
-alembic revision --autogenerate -m "Description of changes"
+**Use the automated scripts for migrations:**
 
-# Test migration on development (automatic)
-git checkout develop
-git add alembic/versions/
-git commit -m "Add database migration: Description of changes"
-git push origin develop
-# ↑ Automatically deploys to development with migration
+```bash
+# Create migration (automatically formats properly)
+./scripts/railway.sh migrate "Description of changes"
+
+# Test on development (automatic via git workflow)
+./scripts/git.sh feature db-changes
+./scripts/git.sh commit "Add database migration: Description"
+./scripts/git.sh finish-feature     # Auto-deploys to development with migration
 
 # Deploy to production after testing (automatic)
-git checkout main
-git merge develop
-git push origin main
-# ↑ Automatically deploys to production with migration
+./scripts/git.sh release            # Auto-deploys to production with migration
 ```
 
-#### Manual Migration Deployment (If Needed)
+#### Manual Migration Deployment (Emergency Only)
+**⚠️ Only use if automated deployment fails:**
 ```bash
 # If automatic deployment fails, manual deployment
 railway environment development
@@ -360,7 +408,17 @@ app = FastAPI(
 
 ### Rollback Strategy
 
-#### Quick Rollback Process
+#### Quick Rollback Process (Recommended)
+```bash
+# Use the automated rollback script
+./scripts/railway.sh rollback
+
+# Verify rollback success
+./scripts/railway.sh health
+```
+
+#### Manual Rollback Process (Emergency Only)
+**⚠️ Only use if scripts fail:**
 ```bash
 # Identify last good deployment
 railway deployments
