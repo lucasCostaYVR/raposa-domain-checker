@@ -245,6 +245,9 @@ async def check_domain(
         if not await is_valid_domain(request.domain):
             raise HTTPException(status_code=422, detail="Invalid or unsafe domain format")
 
+        # Use default email for anonymous users to prevent email service issues
+        effective_email = request.email or "anonymous@raposa.tech"
+        
         logger.info(f"Domain check requested for {request.domain} by {request.email or 'anonymous user'}")
 
         # Check rate limits using our progressive system
@@ -262,7 +265,7 @@ async def check_domain(
 
         # Create domain check record with enhanced data
         domain_check = DomainCheck(
-            email=request.email,
+            email=effective_email,
             domain=request.domain,
             mx_record=dns_analysis["mx"],
             spf_record=dns_analysis["spf"],
@@ -330,7 +333,25 @@ async def check_domain(
 
         logger.info(f"Domain check completed for {request.domain} - Score: {dns_analysis['total_score']}, Grade: {dns_analysis['grade']} - Email report scheduled")
 
-        return domain_check
+        # Return the domain check but with original email (null for anonymous users)
+        response_data = {
+            "id": domain_check.id,
+            "email": request.email,  # Return original email, not effective_email
+            "domain": domain_check.domain,
+            "mx_record": domain_check.mx_record,
+            "spf_record": domain_check.spf_record,
+            "dkim_record": domain_check.dkim_record,
+            "dmarc_record": domain_check.dmarc_record,
+            "score": domain_check.score,
+            "grade": domain_check.grade,
+            "issues": domain_check.issues,
+            "recommendations": domain_check.recommendations,
+            "security_summary": domain_check.security_summary,
+            "created_at": domain_check.created_at,
+            "opt_in_marketing": domain_check.opt_in_marketing
+        }
+        
+        return response_data
 
     except HTTPException:
         raise
