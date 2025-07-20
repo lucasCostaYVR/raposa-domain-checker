@@ -19,13 +19,13 @@ class HealthResponse(BaseModel):
 #     email: EmailStr
 #     username: str
 #     password: str
-#
+# 
 # class UserResponse(BaseModel):
 #     id: int
 #     email: str
 #     username: str
 #     created_at: datetime
 #     is_active: bool
-#
+#     
 #     class Config:
 #         from_attributes = True

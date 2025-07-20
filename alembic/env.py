@@ -10,7 +10,7 @@ from alembic import context
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from src.models import Base
+from models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

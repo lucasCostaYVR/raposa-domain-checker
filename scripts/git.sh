@@ -1,338 +1,326 @@
 #!/bin/bash
 
-# Raposa Domain Checker - Git Workflow Helper Scripts
-# Streamlined git operations for development workflow
+# Git Workflow Script for FastAPI Projects
+# Streamlined git operations and branch management
 
 set -e
 
-# Colors
+# Colors for output
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-RED='\033[0;31m'
 NC='\033[0m'
 
-log() { echo -e "${GREEN}[GIT] $1${NC}"; }
-warn() { echo -e "${YELLOW}[WARN] $1${NC}"; }
-error() { echo -e "${RED}[ERROR] $1${NC}"; }
-info() { echo -e "${BLUE}[INFO] $1${NC}"; }
+print_step() {
+    echo -e "${BLUE}[GIT]${NC} $1"
+}
 
-# Quick commit with formatted message
-quick_commit() {
-    if [ -z "$1" ]; then
-        error "Please provide a commit message"
-        echo "Usage: $0 commit \"Your commit message\""
-        exit 1
-    fi
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
 
-    log "Quick commit with message: $1"
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
-    # Add all changes
-    git add .
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
 
-    # Show what will be committed
-    info "Files to be committed:"
-    git diff --cached --name-only
+show_help() {
+    echo "Git Workflow for FastAPI"
     echo ""
-
-    # Commit with message
-    git commit -m "$1"
-
-    log "Commit created successfully!"
+    echo "Usage: ./scripts/git.sh [command] [args]"
+    echo ""
+    echo "Commands:"
+    echo "  status             Show comprehensive git status"
+    echo "  sync               Sync with remote safely"
+    echo "  feature <name>     Create and switch to feature branch"
+    echo "  commit <message>   Quick commit with proper formatting"
+    echo "  push               Push current branch to remote"
+    echo "  cleanup            Clean up merged branches"
+    echo "  log                Show recent commits with nice formatting"
+    echo "  undo               Undo last commit (keep changes)"
+    echo "  reset              Reset to last remote state (WARNING: loses changes)"
+    echo ""
 }
 
-# Start new feature branch
-new_feature() {
-    if [ -z "$1" ]; then
-        error "Please provide a feature name"
-        echo "Usage: $0 feature feature-name"
+check_git_repo() {
+    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+        print_error "Not in a git repository"
         exit 1
     fi
-
-    feature_name="feature/$1"
-
-    log "Creating new feature branch: $feature_name"
-
-    # Ensure we're on develop
-    git checkout develop
-    git pull origin develop
-
-    # Create and checkout feature branch
-    git checkout -b "$feature_name"
-
-    log "Feature branch '$feature_name' created and checked out!"
-    info "When ready, use: $0 finish-feature"
 }
 
-# Finish feature and merge to develop
-finish_feature() {
-    current_branch=$(git branch --show-current)
-
-    if [[ ! "$current_branch" =~ ^feature/ ]]; then
-        error "Not on a feature branch. Current branch: $current_branch"
-        exit 1
+show_status() {
+    print_step "Git repository status"
+    echo ""
+    
+    # Current branch
+    echo "🌿 Current branch: $(git branch --show-current)"
+    
+    # Remote status
+    git fetch --quiet
+    AHEAD=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo "0")
+    BEHIND=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo "0")
+    
+    if [ "$AHEAD" -gt 0 ]; then
+        echo "⬇️  Behind remote by $AHEAD commits"
     fi
+    
+    if [ "$BEHIND" -gt 0 ]; then
+        echo "⬆️  Ahead of remote by $BEHIND commits"
+    fi
+    
+    if [ "$AHEAD" -eq 0 ] && [ "$BEHIND" -eq 0 ]; then
+        echo "✅ Up to date with remote"
+    fi
+    
+    echo ""
+    
+    # Working directory status
+    if git diff-index --quiet HEAD --; then
+        print_success "Working directory clean"
+    else
+        print_warning "You have uncommitted changes:"
+        git status --porcelain
+    fi
+    
+    echo ""
+    echo "📋 Recent commits:"
+    git log --oneline -5
+}
 
-    log "Finishing feature branch: $current_branch"
-
-    # Ensure all changes are committed
-    if [ -n "$(git status --porcelain)" ]; then
-        warn "You have uncommitted changes:"
-        git status --short
-        read -p "Commit them now? (y/n): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            read -p "Enter commit message: " commit_msg
-            quick_commit "$commit_msg"
+sync_with_remote() {
+    print_step "Syncing with remote..."
+    
+    CURRENT_BRANCH=$(git branch --show-current)
+    
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD --; then
+        print_warning "You have uncommitted changes"
+        read -p "Stash changes and continue? (y/n): " stash_changes
+        if [ "$stash_changes" = "y" ]; then
+            git stash push -m "Auto-stash before sync"
+            STASHED=true
         else
-            error "Please commit or stash changes first"
+            print_error "Cannot sync with uncommitted changes"
             exit 1
         fi
     fi
-
-    # Switch to develop and merge
-    git checkout develop
-    git pull origin develop
-    git merge "$current_branch"
-
-    # Push to origin
-    git push origin develop
-
-    # Delete feature branch
-    git branch -d "$current_branch"
-    git push origin --delete "$current_branch" 2>/dev/null || true
-
-    log "Feature merged to develop and branch deleted!"
-}
-
-# Quick sync with remote
-sync() {
-    current_branch=$(git branch --show-current)
-    log "Syncing branch '$current_branch' with remote..."
-
-    # Stash any uncommitted changes
-    if [ -n "$(git status --porcelain)" ]; then
-        warn "Stashing uncommitted changes..."
-        git stash push -m "Auto-stash before sync"
-        stashed=true
-    else
-        stashed=false
-    fi
-
-    # Pull latest changes
-    git pull origin "$current_branch"
-
-    # Restore stashed changes
-    if [ "$stashed" = true ]; then
-        info "Restoring stashed changes..."
+    
+    # Fetch and merge
+    git fetch origin
+    git merge origin/"$CURRENT_BRANCH"
+    
+    # Restore stashed changes if any
+    if [ "${STASHED:-false}" = "true" ]; then
+        print_step "Restoring stashed changes..."
         git stash pop
     fi
-
-    log "Sync complete!"
+    
+    print_success "Synced with remote"
 }
 
-# Release to production (develop -> main)
-release() {
-    log "Starting release process (develop -> main)..."
-
-    # Ensure develop is clean and up-to-date
-    git checkout develop
-
-    if [ -n "$(git status --porcelain)" ]; then
-        error "Develop branch has uncommitted changes. Please commit first."
-        git status --short
+create_feature() {
+    if [ -z "$1" ]; then
+        print_error "Feature name required"
+        echo "Usage: ./scripts/git.sh feature <name>"
         exit 1
     fi
-
-    git pull origin develop
-
-    # Switch to main and merge
-    git checkout main
-    git pull origin main
-    git merge develop
-
-    # Push to trigger production deployment
-    git push origin main
-
-    log "Release complete! Production deployment triggered."
-    info "Monitor deployment at Railway dashboard"
-}
-
-# Quick status check
-status() {
-    log "Git Status Summary:"
-    echo ""
-
-    info "Current branch: $(git branch --show-current)"
-    info "Last commit: $(git log -1 --oneline)"
-    echo ""
-
-    # Check for uncommitted changes
-    if [ -n "$(git status --porcelain)" ]; then
-        warn "Uncommitted changes:"
-        git status --short
-    else
-        info "Working tree clean ✅"
-    fi
-    echo ""
-
-    # Check if branch is behind remote
-    git fetch origin 2>/dev/null
-    current_branch=$(git branch --show-current)
-    behind=$(git rev-list --count HEAD..origin/"$current_branch" 2>/dev/null || echo "0")
-    ahead=$(git rev-list --count origin/"$current_branch"..HEAD 2>/dev/null || echo "0")
-
-    if [ "$behind" -gt 0 ]; then
-        warn "Branch is $behind commits behind origin"
-    fi
-
-    if [ "$ahead" -gt 0 ]; then
-        info "Branch is $ahead commits ahead of origin"
-    fi
-
-    if [ "$behind" -eq 0 ] && [ "$ahead" -eq 0 ]; then
-        info "Branch is up to date with origin ✅"
-    fi
-}
-
-# Clean up merged branches
-cleanup() {
-    log "Cleaning up merged branches..."
-
-    # Switch to develop
-    git checkout develop
-
-    # Delete merged feature branches
-    merged_branches=$(git branch --merged | grep -E "feature/" | grep -v "\*" || true)
-
-    if [ -n "$merged_branches" ]; then
-        info "Deleting merged feature branches:"
-        echo "$merged_branches"
-        echo "$merged_branches" | xargs -n 1 git branch -d
-
-        # Try to delete remote branches too
-        echo "$merged_branches" | xargs -n 1 -I {} git push origin --delete {} 2>/dev/null || true
-    else
-        info "No merged feature branches to clean up"
-    fi
-
-    log "Cleanup complete!"
-}
-
-# Show recent commits
-history() {
-    count=${1:-10}
-    log "Recent $count commits:"
-    git log --oneline -n "$count" --graph --decorate
-}
-
-# Show branches
-branches() {
-    log "Local branches:"
-    git branch -v
-    echo ""
-
-    log "Remote branches:"
-    git branch -rv
-}
-
-# Undo last commit (keep changes)
-undo_commit() {
-    log "Undoing last commit (keeping changes)..."
-    git reset --soft HEAD~1
-    log "Last commit undone. Changes are still staged."
-}
-
-# Emergency stash and sync
-emergency_sync() {
-    log "Emergency sync - stashing everything and pulling latest..."
-
-    # Stash everything including untracked files
-    git stash push -u -m "Emergency stash $(date)"
-
+    
+    FEATURE_NAME="feature/$1"
+    
+    print_step "Creating feature branch: $FEATURE_NAME"
+    
+    # Ensure we're on main/master
+    git checkout main 2>/dev/null || git checkout master 2>/dev/null || {
+        print_error "Could not switch to main/master branch"
+        exit 1
+    }
+    
     # Sync with remote
-    sync
-
-    log "Emergency sync complete. Use 'git stash list' to see stashed changes."
+    git pull origin
+    
+    # Create and switch to feature branch
+    git checkout -b "$FEATURE_NAME"
+    
+    print_success "Created and switched to $FEATURE_NAME"
+    echo "💡 When ready, commit your changes and push with:"
+    echo "   ./scripts/git.sh commit \"Your commit message\""
+    echo "   ./scripts/git.sh push"
 }
 
-# Show help
-show_help() {
-    echo "Raposa Domain Checker - Git Workflow Helper"
-    echo ""
-    echo "Usage: $0 <command> [arguments]"
-    echo ""
-    echo "Commands:"
-    echo "  commit <msg>        Quick commit all changes with message"
-    echo "  feature <name>      Start new feature branch from develop"
-    echo "  finish-feature      Finish current feature and merge to develop"
-    echo "  sync                Sync current branch with remote"
-    echo "  release             Release develop to main (triggers production)"
-    echo "  status              Show git status summary"
-    echo "  cleanup             Clean up merged feature branches"
-    echo "  history [count]     Show recent commits (default: 10)"
-    echo "  branches            Show all branches"
-    echo "  undo                Undo last commit (keep changes)"
-    echo "  emergency           Emergency stash and sync"
-    echo "  help                Show this help message"
-    echo ""
-    echo "Workflow Examples:"
-    echo "  $0 feature user-auth    # Start new feature"
-    echo "  $0 commit \"Add login\"   # Quick commit"
-    echo "  $0 finish-feature       # Merge to develop"
-    echo "  $0 release              # Deploy to production"
-    echo ""
-    echo "Branch Strategy:"
-    echo "  develop → Development environment (stage.domainchecker.raposa.tech)"
-    echo "  main    → Production environment (api.domainchecker.raposa.tech)"
-}
-
-# Main script logic
-main() {
-    # Check if we're in a git repository
-    if ! git rev-parse --git-dir > /dev/null 2>&1; then
-        error "Not in a git repository"
+quick_commit() {
+    if [ -z "$1" ]; then
+        print_error "Commit message required"
+        echo "Usage: ./scripts/git.sh commit \"Your commit message\""
         exit 1
     fi
-
-    case "${1:-help}" in
-        "commit")
-            quick_commit "$2"
-            ;;
-        "feature")
-            new_feature "$2"
-            ;;
-        "finish-feature")
-            finish_feature
-            ;;
-        "sync")
-            sync
-            ;;
-        "release")
-            release
-            ;;
-        "status")
-            status
-            ;;
-        "cleanup")
-            cleanup
-            ;;
-        "history")
-            history "$2"
-            ;;
-        "branches")
-            branches
-            ;;
-        "undo")
-            undo_commit
-            ;;
-        "emergency")
-            emergency_sync
-            ;;
-        "help"|*)
-            show_help
-            ;;
-    esac
+    
+    # Check if there are changes to commit
+    if git diff-index --quiet HEAD --; then
+        print_warning "No changes to commit"
+        exit 0
+    fi
+    
+    print_step "Committing changes..."
+    
+    # Show what will be committed
+    echo "Changes to be committed:"
+    git diff --name-status --cached
+    
+    if [ -z "$(git diff --name-only --cached)" ]; then
+        print_step "Adding all changes..."
+        git add .
+    fi
+    
+    # Commit with message
+    git commit -m "$1"
+    
+    print_success "Changes committed"
+    echo "📝 Commit: $1"
+    
+    # Suggest next steps
+    CURRENT_BRANCH=$(git branch --show-current)
+    if [ "$CURRENT_BRANCH" != "main" ] && [ "$CURRENT_BRANCH" != "master" ]; then
+        echo ""
+        echo "💡 Next steps:"
+        echo "   ./scripts/git.sh push     # Push to remote"
+    fi
 }
 
-main "$@"
+push_branch() {
+    CURRENT_BRANCH=$(git branch --show-current)
+    
+    print_step "Pushing $CURRENT_BRANCH to remote..."
+    
+    # Check if remote branch exists
+    if git ls-remote --exit-code --heads origin "$CURRENT_BRANCH" > /dev/null 2>&1; then
+        git push origin "$CURRENT_BRANCH"
+    else
+        print_step "Setting up remote tracking..."
+        git push -u origin "$CURRENT_BRANCH"
+    fi
+    
+    print_success "Pushed to remote"
+    
+    # Show GitHub URL if possible
+    REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+    if [[ "$REMOTE_URL" == *"github.com"* ]]; then
+        REPO_PATH=$(echo "$REMOTE_URL" | sed 's/.*github\.com[:/]\([^/]*\/[^/]*\)\.git/\1/')
+        echo ""
+        echo "🔗 Create pull request:"
+        echo "   https://github.com/$REPO_PATH/compare/$CURRENT_BRANCH"
+    fi
+}
+
+cleanup_branches() {
+    print_step "Cleaning up merged branches..."
+    
+    # Switch to main/master
+    git checkout main 2>/dev/null || git checkout master 2>/dev/null
+    
+    # Sync with remote
+    git pull origin
+    
+    # Delete merged branches
+    MERGED_BRANCHES=$(git branch --merged | grep -v '\*\|main\|master' | tr -d ' ')
+    
+    if [ -z "$MERGED_BRANCHES" ]; then
+        print_success "No merged branches to clean up"
+        return
+    fi
+    
+    echo "Merged branches to delete:"
+    echo "$MERGED_BRANCHES"
+    echo ""
+    read -p "Delete these branches? (y/n): " confirm_delete
+    
+    if [ "$confirm_delete" = "y" ]; then
+        echo "$MERGED_BRANCHES" | xargs -n 1 git branch -d
+        print_success "Cleaned up merged branches"
+    fi
+}
+
+show_log() {
+    print_step "Recent commit history"
+    echo ""
+    git log --oneline --graph --decorate -10
+}
+
+undo_commit() {
+    print_step "Undoing last commit (keeping changes)..."
+    
+    LAST_COMMIT=$(git log -1 --oneline)
+    echo "Last commit: $LAST_COMMIT"
+    
+    read -p "Undo this commit? (y/n): " confirm_undo
+    
+    if [ "$confirm_undo" = "y" ]; then
+        git reset --soft HEAD~1
+        print_success "Commit undone, changes kept in staging"
+    fi
+}
+
+reset_to_remote() {
+    print_warning "This will LOSE all local changes!"
+    CURRENT_BRANCH=$(git branch --show-current)
+    echo "Branch: $CURRENT_BRANCH"
+    
+    read -p "Are you sure? Type 'yes' to confirm: " confirm_reset
+    
+    if [ "$confirm_reset" = "yes" ]; then
+        git fetch origin
+        git reset --hard origin/"$CURRENT_BRANCH"
+        git clean -fd
+        print_success "Reset to remote state"
+    else
+        print_step "Reset cancelled"
+    fi
+}
+
+# Main command handling
+check_git_repo
+
+case "${1:-}" in
+    "status")
+        show_status
+        ;;
+    "sync")
+        sync_with_remote
+        ;;
+    "feature")
+        create_feature "$2"
+        ;;
+    "commit")
+        quick_commit "$2"
+        ;;
+    "push")
+        push_branch
+        ;;
+    "cleanup")
+        cleanup_branches
+        ;;
+    "log")
+        show_log
+        ;;
+    "undo")
+        undo_commit
+        ;;
+    "reset")
+        reset_to_remote
+        ;;
+    "help"|"--help"|"-h")
+        show_help
+        ;;
+    "")
+        show_help
+        ;;
+    *)
+        print_error "Unknown command: $1"
+        show_help
+        exit 1
+        ;;
+esac

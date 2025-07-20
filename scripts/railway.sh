@@ -1,346 +1,276 @@
 #!/bin/bash
 
-# Raposa Domain Checker - Railway Management Scripts
-# Collection of useful commands for managing Railway deployments
+# Railway Management Script for FastAPI Projects
+# Manage Railway deployments and environments
 
-set -e  # Exit on any error
+set -e
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Helper function for colored output
-log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
+print_step() {
+    echo -e "${BLUE}[RAILWAY]${NC} $1"
 }
 
-warn() {
-    echo -e "${YELLOW}[WARNING] $1${NC}"
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-error() {
-    echo -e "${RED}[ERROR] $1${NC}"
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
-info() {
-    echo -e "${BLUE}[INFO] $1${NC}"
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-# Check if Railway CLI is installed
-check_railway_cli() {
-    if ! command -v railway &> /dev/null; then
-        error "Railway CLI not found. Install it first:"
-        echo "npm install -g @railway/cli"
-        exit 1
-    fi
-}
-
-# Show current Railway status
-show_status() {
-    log "Current Railway Status:"
-    railway status
-    echo ""
-}
-
-# Quick health check for both environments
-health_check() {
-    log "Checking API health..."
-    echo ""
-
-    info "Production Health Check:"
-    curl -s https://api.domainchecker.raposa.tech/healthz/ | jq '.' 2>/dev/null || echo "Production API not responding"
-    echo ""
-
-    info "Development Health Check:"
-    curl -s https://stage.domainchecker.raposa.tech/healthz/ | jq '.' 2>/dev/null || echo "Development API not responding"
-    echo ""
-}
-
-# Deploy to development
-deploy_dev() {
-    log "Deploying to development environment..."
-
-    # Ensure we're on develop branch
-    current_branch=$(git branch --show-current)
-    if [ "$current_branch" != "develop" ]; then
-        warn "Current branch is $current_branch, switching to develop..."
-        git checkout develop
-    fi
-
-    # Check for uncommitted changes
-    if [ -n "$(git status --porcelain)" ]; then
-        error "You have uncommitted changes. Please commit or stash them first."
-        git status --short
-        exit 1
-    fi
-
-    # Pull latest changes
-    git pull origin develop
-
-    # Push to trigger deployment
-    log "Pushing to develop branch (triggers automatic deployment)..."
-    git push origin develop
-
-    log "Development deployment triggered! Check Railway dashboard for progress."
-    info "URL: https://stage.domainchecker.raposa.tech"
-}
-
-# Deploy to production
-deploy_prod() {
-    log "Deploying to production environment..."
-
-    # Ensure we're on main branch
-    current_branch=$(git branch --show-current)
-    if [ "$current_branch" != "main" ]; then
-        warn "Current branch is $current_branch, switching to main..."
-        git checkout main
-    fi
-
-    # Check for uncommitted changes
-    if [ -n "$(git status --porcelain)" ]; then
-        error "You have uncommitted changes. Please commit or stash them first."
-        git status --short
-        exit 1
-    fi
-
-    # Merge develop into main
-    log "Merging develop branch into main..."
-    git merge develop
-
-    # Push to trigger deployment
-    log "Pushing to main branch (triggers automatic deployment)..."
-    git push origin main
-
-    log "Production deployment triggered! Check Railway dashboard for progress."
-    info "URL: https://api.domainchecker.raposa.tech"
-}
-
-# View logs for current environment
-view_logs() {
-    log "Viewing logs for current environment..."
-    railway logs
-}
-
-# View deployment logs specifically
-view_deployment_logs() {
-    log "Viewing deployment logs for current environment..."
-    railway logs --deployment
-}
-
-# View build logs
-view_build_logs() {
-    log "Viewing build logs for current environment..."
-    railway logs --build
-}
-
-# Monitor deployment in real-time
-monitor_deployment() {
-    log "Monitoring deployment logs in real-time..."
-    info "Press Ctrl+C to stop monitoring"
-    railway logs --deployment --follow 2>/dev/null || railway logs --deployment
-}
-
-# Switch between environments
-switch_env() {
-    if [ "$1" = "dev" ] || [ "$1" = "development" ]; then
-        log "Switching to development environment..."
-        railway environment development
-        railway service raposa-stage
-        git checkout develop 2>/dev/null || true
-    elif [ "$1" = "prod" ] || [ "$1" = "production" ]; then
-        log "Switching to production environment..."
-        railway environment production
-        railway service raposa-app-api
-        git checkout main 2>/dev/null || true
-    else
-        error "Invalid environment. Use 'dev' or 'prod'"
-        exit 1
-    fi
-
-    show_status
-}
-
-# Create a new database migration
-create_migration() {
-    if [ -z "$1" ]; then
-        error "Please provide a migration description"
-        echo "Usage: $0 migrate \"Add new column to users\""
-        exit 1
-    fi
-
-    log "Creating new database migration: $1"
-
-    # Ensure we're in the correct directory
-    if [ ! -f "alembic.ini" ]; then
-        error "alembic.ini not found. Run this from the project root."
-        exit 1
-    fi
-
-    # Generate migration
-    alembic revision --autogenerate -m "$1"
-
-    log "Migration created successfully!"
-    warn "Remember to review the generated migration file before deploying."
-}
-
-# Rollback deployment
-rollback() {
-    warn "Rolling back last deployment..."
-    railway rollback
-    log "Rollback completed!"
-}
-
-# Show environment variables
-show_vars() {
-    log "Environment variables for current service:"
-    railway variables
-}
-
-# Set environment variable
-set_var() {
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        error "Please provide variable name and value"
-        echo "Usage: $0 setvar VARIABLE_NAME value"
-        exit 1
-    fi
-
-    log "Setting environment variable: $1"
-    railway variables set "$1=$2"
-    log "Variable set successfully!"
-}
-
-# Quick project setup
-setup_project() {
-    log "Setting up Railway project links..."
-
-    # Link to production environment
-    info "Linking production environment..."
-    railway link -e production -s raposa-app-api
-
-    # Switch to development
-    info "Linking development environment..."
-    railway link -e development -s raposa-stage
-
-    log "Project setup completed!"
-    show_status
-}
-
-# Show deployment history
-show_deployments() {
-    log "Recent deployments:"
-    railway deployments
-}
-
-# Full development workflow
-dev_workflow() {
-    log "Starting development workflow..."
-
-    # Switch to development environment
-    switch_env dev
-
-    # Check health
-    health_check
-
-    # Show logs
-    info "Recent logs:"
-    railway logs --tail 10
-}
-
-# Show help
 show_help() {
-    echo "Raposa Domain Checker - Railway Management Scripts"
+    echo "Railway Management for FastAPI"
     echo ""
-    echo "Usage: $0 <command> [arguments]"
+    echo "Usage: ./scripts/railway.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  status              Show current Railway status"
-    echo "  health              Check API health for both environments"
-    echo "  deploy-dev          Deploy to development environment"
-    echo "  deploy-prod         Deploy to production environment"
-    echo "  logs                View logs for current environment"
-    echo "  deploy-logs         View deployment logs specifically"
-    echo "  build-logs          View build logs"
-    echo "  monitor             Monitor deployment in real-time"
-    echo "  switch <env>        Switch to dev/prod environment"
-    echo "  migrate <message>   Create new database migration"
-    echo "  rollback            Rollback last deployment"
-    echo "  vars                Show environment variables"
-    echo "  setvar <name> <val> Set environment variable"
-    echo "  setup               Setup Railway project links"
-    echo "  deployments         Show deployment history"
-    echo "  dev                 Start development workflow"
-    echo "  help                Show this help message"
+    echo "  status             Show project status and deployments"
+    echo "  deploy             Deploy current branch to Railway"
+    echo "  logs               View application logs"
+    echo "  shell              Open shell in production environment"
+    echo "  env                Manage environment variables"
+    echo "  db                 Database operations"
+    echo "  health             Check API health"
+    echo "  setup              Setup new Railway project"
     echo ""
-    echo "Examples:"
-    echo "  $0 deploy-dev"
-    echo "  $0 switch prod"
-    echo "  $0 monitor              # Watch deployment in real-time"
-    echo "  $0 deploy-logs          # View deployment logs"
-    echo "  $0 migrate \"Add email verification\""
-    echo "  $0 setvar DEBUG true"
 }
 
-# Main script logic
-main() {
-    check_railway_cli
+check_railway_cli() {
+    if ! command -v railway &> /dev/null; then
+        print_error "Railway CLI not found. Install with:"
+        echo "curl -fsSL https://railway.app/install.sh | sh"
+        exit 1
+    fi
+}
 
-    case "${1:-help}" in
-        "status")
-            show_status
+check_login() {
+    if ! railway whoami &> /dev/null; then
+        print_error "Not logged in to Railway. Run: railway login"
+        exit 1
+    fi
+}
+
+show_status() {
+    print_step "Getting project status..."
+
+    echo ""
+    echo "Project Information:"
+    railway status
+
+    echo ""
+    echo "Recent Deployments:"
+    railway logs --lines 10
+}
+
+deploy_app() {
+    print_step "Deploying to Railway..."
+
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD --; then
+        print_warning "You have uncommitted changes"
+        read -p "Continue with deployment? (y/n): " continue_deploy
+        if [ "$continue_deploy" != "y" ]; then
+            exit 0
+        fi
+    fi
+
+    # Deploy
+    railway up
+
+    if [ $? -eq 0 ]; then
+        print_success "Deployment completed"
+
+        # Show deployment URL
+        PROJECT_URL=$(railway status --json 2>/dev/null | grep -o '"url":"[^"]*"' | cut -d'"' -f4 || echo "")
+        if [ ! -z "$PROJECT_URL" ]; then
+            echo ""
+            echo "🌐 Your API: $PROJECT_URL"
+            echo "📊 Health check: $PROJECT_URL/health/"
+        fi
+    else
+        print_error "Deployment failed"
+        exit 1
+    fi
+}
+
+view_logs() {
+    print_step "Viewing application logs..."
+    railway logs --follow
+}
+
+open_shell() {
+    print_step "Opening production shell..."
+    railway shell
+}
+
+manage_env() {
+    echo "Environment Variable Management"
+    echo ""
+    echo "1. List all variables"
+    echo "2. Set a variable"
+    echo "3. Delete a variable"
+    echo ""
+    read -p "Choose option (1-3): " option
+
+    case $option in
+        1)
+            print_step "Listing environment variables..."
+            railway variables
             ;;
-        "health")
-            health_check
+        2)
+            read -p "Variable name: " var_name
+            read -p "Variable value: " var_value
+            railway variables set "$var_name=$var_value"
+            print_success "Variable set: $var_name"
             ;;
-        "deploy-dev")
-            deploy_dev
+        3)
+            read -p "Variable name to delete: " var_name
+            railway variables delete "$var_name"
+            print_success "Variable deleted: $var_name"
             ;;
-        "deploy-prod")
-            deploy_prod
-            ;;
-        "logs")
-            view_logs
-            ;;
-        "deploy-logs")
-            view_deployment_logs
-            ;;
-        "build-logs")
-            view_build_logs
-            ;;
-        "monitor")
-            monitor_deployment
-            ;;
-        "switch")
-            switch_env "$2"
-            ;;
-        "migrate")
-            create_migration "$2"
-            ;;
-        "rollback")
-            rollback
-            ;;
-        "vars")
-            show_vars
-            ;;
-        "setvar")
-            set_var "$2" "$3"
-            ;;
-        "setup")
-            setup_project
-            ;;
-        "deployments")
-            show_deployments
-            ;;
-        "dev")
-            dev_workflow
-            ;;
-        "help"|*)
-            show_help
+        *)
+            print_error "Invalid option"
             ;;
     esac
 }
 
-# Run main function with all arguments
-main "$@"
+manage_db() {
+    echo "Database Operations"
+    echo ""
+    echo "1. Connect to database"
+    echo "2. Run migration"
+    echo "3. Backup database"
+    echo "4. Show database URL"
+    echo ""
+    read -p "Choose option (1-4): " option
+
+    case $option in
+        1)
+            print_step "Connecting to database..."
+            DATABASE_URL=$(railway variables get DATABASE_URL)
+            if [ ! -z "$DATABASE_URL" ]; then
+                railway run psql "$DATABASE_URL"
+            else
+                print_error "DATABASE_URL not found"
+            fi
+            ;;
+        2)
+            print_step "Running database migration..."
+            railway run alembic upgrade head
+            ;;
+        3)
+            print_step "Creating database backup..."
+            BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
+            DATABASE_URL=$(railway variables get DATABASE_URL)
+            if [ ! -z "$DATABASE_URL" ]; then
+                railway run pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
+                print_success "Backup created: $BACKUP_FILE"
+            else
+                print_error "DATABASE_URL not found"
+            fi
+            ;;
+        4)
+            print_step "Database connection string:"
+            railway variables get DATABASE_URL
+            ;;
+        *)
+            print_error "Invalid option"
+            ;;
+    esac
+}
+
+check_health() {
+    print_step "Checking API health..."
+
+    PROJECT_URL=$(railway status --json 2>/dev/null | grep -o '"url":"[^"]*"' | cut -d'"' -f4 || echo "")
+
+    if [ -z "$PROJECT_URL" ]; then
+        print_error "Could not determine project URL"
+        exit 1
+    fi
+
+    HEALTH_URL="$PROJECT_URL/health/"
+
+    echo "Testing: $HEALTH_URL"
+
+    if curl -s "$HEALTH_URL" > /dev/null; then
+        print_success "API is healthy"
+        echo ""
+        echo "Health Response:"
+        curl -s "$HEALTH_URL" | python -m json.tool
+    else
+        print_error "API health check failed"
+        print_step "Check logs with: ./scripts/railway.sh logs"
+    fi
+}
+
+setup_project() {
+    print_step "Setting up new Railway project..."
+    echo ""
+    echo "This will run the automated setup script."
+    echo "Make sure you have:"
+    echo "1. Railway CLI installed and logged in"
+    echo "2. Your code ready in this directory"
+    echo ""
+    read -p "Continue? (y/n): " continue_setup
+
+    if [ "$continue_setup" = "y" ]; then
+        if [ -f "./setup_railway.sh" ]; then
+            ./setup_railway.sh
+        else
+            print_error "setup_railway.sh not found"
+        fi
+    fi
+}
+
+# Main command handling
+check_railway_cli
+check_login
+
+case "${1:-}" in
+    "status")
+        show_status
+        ;;
+    "deploy")
+        deploy_app
+        ;;
+    "logs")
+        view_logs
+        ;;
+    "shell")
+        open_shell
+        ;;
+    "env")
+        manage_env
+        ;;
+    "db")
+        manage_db
+        ;;
+    "health")
+        check_health
+        ;;
+    "setup")
+        setup_project
+        ;;
+    "help"|"--help"|"-h")
+        show_help
+        ;;
+    "")
+        show_help
+        ;;
+    *)
+        print_error "Unknown command: $1"
+        show_help
+        exit 1
+        ;;
+esac

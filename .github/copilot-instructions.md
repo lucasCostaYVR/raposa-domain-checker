@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for Raposa Domain Checker
+# GitHub Copilot Instructions for FastAPI Boilerplate
 
 ## AI Assistant Guidelines
 - **Be brief and direct**: Provide concise, actionable responses without unnecessary explanation
@@ -7,13 +7,12 @@
 - **Stay focused**: Address the specific request without verbose context
 
 ## Project Overview
-This is a FastAPI-based domain security analysis API that provides comprehensive DNS record checking including MX, SPF, DKIM, and DMARC validation with intelligent scoring and email reporting capabilities.
+This is a clean FastAPI boilerplate for rapid API development. It provides a minimal foundation with database integration, Railway deployment automation, and development tooling for building modern APIs quickly.
 
 ## Technology Stack
-- **Backend**: FastAPI (Python 3.12)
+- **Backend**: FastAPI (Python 3.12+)
 - **Database**: PostgreSQL with SQLAlchemy ORM
 - **Migrations**: Alembic
-- **Email Service**: SendGrid with Jinja2 templating
 - **Deployment**: Railway (Docker-based)
 - **Environment Management**: python-dotenv
 
@@ -31,10 +30,9 @@ This is a FastAPI-based domain security analysis API that provides comprehensive
 - Implement proper exception handling with HTTPException
 - Use Pydantic models for request/response validation
 - Include comprehensive docstrings for API endpoints
-- Use background tasks for email sending
+- Use background tasks for async operations
 
 ### Database Patterns
-- **NEVER use SQLite** - Always use PostgreSQL for consistency between development and production
 - **PostgreSQL only**: Use PostgreSQL for all environments (development, staging, production)
 - Use SQLAlchemy declarative models
 - Implement proper session management
@@ -44,120 +42,121 @@ This is a FastAPI-based domain security analysis API that provides comprehensive
 ## Project Structure
 ```
 main.py                  # FastAPI application entry point (project root)
-src/
-├── database.py          # Database configuration and session management
-├── models.py            # SQLAlchemy database models
-├── schemas.py           # Pydantic request/response models
-├── dns_utils.py         # DNS record checking utilities
-├── email_service.py     # Email sending service with templates
-└── templates/           # Jinja2 email templates
-    ├── domain_report.html
-    ├── domain_report.txt
-    └── welcome_email.html
+database.py              # Database configuration and session management
+models.py                # SQLAlchemy database models (examples in comments)
+schemas.py               # Pydantic request/response models (examples in comments)
+requirements.txt         # Python dependencies
 railway.json             # Railway deployment configuration
 alembic.ini              # Alembic migration configuration
 alembic/                 # Database migration files
 scripts/                 # Development automation scripts
+├── dev.sh              # Development helper commands
+├── railway.sh          # Railway deployment management
+└── git.sh              # Git workflow automation
+setup_railway.sh         # One-command Railway project setup
 ```
 
-**Important**: `main.py` is located in the project root (not in `src/`) with imports using `from src.module` pattern for Railway deployment compatibility.
-
-## Key Components
-
-### Freemium Rate Limiting (Option C Implementation)
-- **Anonymous users**: 1 check per domain per month (IP-based tracking)
-- **Registered users**: 15 checks per domain per month (email-based tracking)
-- **Progressive enhancement**: First check free, email required for additional checks
-- **Conversion messaging**: Clear upgrade prompts when limits are reached
-
-### Environment Configuration
-- Development mode: `ENVIRONMENT=development` (enables /docs, uses create_all)
-- Production mode: Uses Alembic migrations, disables documentation endpoints
-- Environment-aware database setup with fallback mechanisms
-
-### Email System
-- Professional Jinja2 templates following brand guidelines
-- SendGrid integration for reliable delivery
-- Background task processing for non-blocking email sending
-- Welcome emails for first-time users
-
-### Database Management
-- Environment-aware setup (development vs production)
-- Automatic migration handling in production
-- Graceful fallback to create_all if migrations fail
-- Retry logic for database connection issues
+**Important**: All Python modules are in the project root for simplified imports. No `src/` directory - this ensures Railway deployment compatibility and cleaner import statements.
 
 ## Development Scripts
 
-The project includes comprehensive helper scripts in the `scripts/` directory for streamlined development and deployment workflows:
-
-### Railway Management (`scripts/railway.sh`)
-```bash
-# Deploy to environments
-./scripts/railway.sh deploy-dev      # Deploy to development
-./scripts/railway.sh deploy-prod     # Deploy to production
-./scripts/railway.sh health          # Check API health for both environments
-./scripts/railway.sh switch dev/prod # Switch between environments
-./scripts/railway.sh logs            # View current environment logs
-./scripts/railway.sh rollback        # Emergency rollback
-./scripts/railway.sh migrate "msg"   # Create database migration
-```
+The boilerplate includes comprehensive helper scripts for streamlined development:
 
 ### Development Tools (`scripts/dev.sh`)
 ```bash
 # Local development
 ./scripts/dev.sh start              # Start development server with hot reload
-./scripts/dev.sh setup              # Setup complete development environment
-./scripts/dev.sh test               # Test API endpoints locally
+./scripts/dev.sh setup              # Setup development environment
+./scripts/dev.sh test               # Test API endpoints
+./scripts/dev.sh migrate "message"  # Create database migration
+./scripts/dev.sh shell              # Open Python shell with app context
 ./scripts/dev.sh format             # Format code with Black
 ./scripts/dev.sh lint               # Lint code with flake8
-./scripts/dev.sh tests              # Run test suite
-./scripts/dev.sh session            # Full development startup workflow
+./scripts/dev.sh install <package>  # Install Python package
+./scripts/dev.sh clean              # Clean cache and temp files
+```
+
+### Railway Management (`scripts/railway.sh`)
+```bash
+# Railway operations
+./scripts/railway.sh status         # Show project status
+./scripts/railway.sh deploy         # Deploy to Railway
+./scripts/railway.sh logs           # View application logs
+./scripts/railway.sh shell          # Open production shell
+./scripts/railway.sh env            # Manage environment variables
+./scripts/railway.sh db             # Database operations
+./scripts/railway.sh health         # Check API health
+./scripts/railway.sh setup          # Setup new Railway project
 ```
 
 ### Git Workflow (`scripts/git.sh`)
 ```bash
-# Feature development workflow
-./scripts/git.sh feature <name>     # Start new feature branch
-./scripts/git.sh commit "message"   # Quick commit with proper formatting
-./scripts/git.sh finish-feature     # Merge feature to develop (auto-deploys)
-./scripts/git.sh release            # Release develop to main (production)
+# Git operations
 ./scripts/git.sh status             # Comprehensive git status
 ./scripts/git.sh sync               # Sync with remote safely
+./scripts/git.sh feature <name>     # Create feature branch
+./scripts/git.sh commit "message"   # Quick commit
+./scripts/git.sh push               # Push current branch
+./scripts/git.sh cleanup            # Clean up merged branches
+./scripts/git.sh log                # Show recent commits
 ```
 
-### Environment Setup (`scripts/setup.sh`)
+### Initial Setup (`setup_railway.sh`)
 ```bash
-# One-command setup for new developers
-./scripts/setup.sh                  # Complete development environment setup
+# One-command Railway setup
+./setup_railway.sh                  # Complete Railway project setup
 ```
 
-**Always use these scripts** instead of manual commands for:
-- Deployments (use railway.sh instead of manual Railway CLI)
-- Environment switching (automated safety checks)
-- Feature development (proper branch workflow)
-- Code formatting and testing (consistent standards)
+**Always use these scripts** instead of manual commands for consistency and automation.
+
+## Quick Start Guide
+
+### 1. Setup New Project
+```bash
+# Clone/copy the boilerplate
+git clone <your-boilerplate-repo>
+cd your-new-project
+
+# Setup development environment
+./scripts/dev.sh setup
+
+# Setup Railway deployment (optional)
+./setup_railway.sh
+```
+
+### 2. Add Your API Logic
+```bash
+# Start development server
+./scripts/dev.sh start
+
+# Edit src/models.py for database models
+# Edit src/schemas.py for request/response models
+# Edit main.py for API endpoints
+```
+
+### 3. Database Setup
+```bash
+# Create migration for your models
+./scripts/dev.sh migrate "Add your models"
+
+# Deploy with migrations
+./scripts/railway.sh deploy
+```
 
 ## Development Guidelines
 
 ### Adding New Features
-1. Create Pydantic schemas for request/response models
-2. Implement database models with proper relationships
-3. Add comprehensive error handling
-4. Include background tasks for async operations
-5. Write descriptive docstrings and type hints
+1. Create Pydantic schemas in `schemas.py`
+2. Implement database models in `models.py`
+3. Add API endpoints in `main.py`
+4. Create database migrations with `./scripts/dev.sh migrate`
+5. Test locally with `./scripts/dev.sh test`
 
 ### Database Changes
-1. Create Alembic migrations for schema changes
-2. Test migrations in development environment first
-3. Ensure backward compatibility when possible
-4. Update models.py to reflect schema changes
-
-### Email Templates
-1. Follow brand guidelines in templates/
-2. Include both HTML and plain text versions
-3. Use Jinja2 templating for dynamic content
-4. Test email rendering before deployment
+1. Modify models in `models.py`
+2. Create migration: `./scripts/dev.sh migrate "Description"`
+3. Test migration locally
+4. Deploy: `./scripts/railway.sh deploy`
 
 ### Error Handling
 - Use HTTPException for API errors
@@ -167,16 +166,12 @@ The project includes comprehensive helper scripts in the `scripts/` directory fo
 
 ## Deployment Strategy
 
-### Branch Strategy
-- `main` branch → Production environment (`api.domainchecker.raposa.tech`)
-- `develop` branch → Development environment (`stage.domainchecker.raposa.tech`)
-
 ### Railway Deployment
 - **nixpacks-based deployment**: Auto-detection for Python projects
-- **No Dockerfile required**: Dockerfile is disabled (renamed to Dockerfile.disabled)
-- **Automatic deployments**: Triggered on branch pushes via GitHub integration
-- **Environment-specific configuration**: Uses railway.json for deployment settings
-- **Health checks**: `/healthz/` endpoint with 120-second timeout
+- **No Dockerfile required**: Uses nixpacks auto-detection
+- **Automatic PostgreSQL**: Added via Railway services
+- **Environment-specific configuration**: Uses railway.json
+- **Health checks**: `/health/` endpoint with timeout
 - **Import structure**: main.py in project root with `from src.module` imports
 
 ### Railway Configuration (railway.json)
@@ -186,7 +181,7 @@ The project includes comprehensive helper scripts in the `scripts/` directory fo
         "builder": "nixpacks"
     },
     "deploy": {
-        "healthcheckPath": "/healthz/",
+        "healthcheckPath": "/health/",
         "healthcheckTimeout": 120,
         "restartPolicyType": "ON_FAILURE",
         "startCommand": "gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5"
@@ -195,25 +190,24 @@ The project includes comprehensive helper scripts in the `scripts/` directory fo
 ```
 
 ### Critical Deployment Notes
-- **Use nixpacks auto-detection**: Remove any custom nixpacks.toml for best results
-- **Disable Dockerfile**: Rename to Dockerfile.disabled to force nixpacks usage
-- **Health check requirements**: Must use `from sqlalchemy import text` for database queries
-- **Import pattern**: All imports from src/ must use `from src.module` syntax
-- **Startup command**: Use `gunicorn main:app` (main.py in root, not src/main.py)
+- **Use nixpacks auto-detection**: No custom configuration needed
+- **Health check requirements**: Must use proper SQLAlchemy imports
+- **Import pattern**: All imports from project modules use simple imports like `from database import engine, get_db`
+- **Startup command**: Use `gunicorn main:app` (main.py in root)
 
 ## Testing Guidelines
 - Test API endpoints with various input scenarios
-- Validate email template rendering
-- Test database migration scenarios
-- Verify DNS record parsing accuracy
+- Validate database operations
+- Test deployment and health checks
+- Use automated testing in CI/CD
 
 ## Security Considerations
-- Validate domain input to prevent injection attacks
-- Rate limiting on domain checks (1 for anonymous, 15 for registered users per domain per month)
-- CORS configuration for trusted origins only
-- Environment-based security settings
+- Validate all input to prevent injection attacks
+- Use environment variables for sensitive data
+- Implement proper CORS configuration
+- Use HTTPS in production
 
-## Common Patterns to Follow
+## Common Patterns
 
 ### API Endpoint Structure
 ```python
@@ -253,42 +247,59 @@ class ModelName(Base):
     # Additional fields with proper types and constraints
 ```
 
-### Email Service Pattern
+### Pydantic Schema Pattern
 ```python
-async def send_email_function(self, to_email: str, **template_data):
-    """Send email with template rendering."""
-    try:
-        template_data = self._prepare_template_data(**template_data)
-        # Template rendering and email sending logic
-        return True
-    except Exception as e:
-        logger.error(f"Email sending failed: {e}")
-        return False
+class RequestModel(BaseModel):
+    field: str = Field(..., description="Field description")
+
+class ResponseModel(BaseModel):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+```
+
+## Customization Guide
+
+### Environment Variables
+Add to Railway or local `.env`:
+```
+DATABASE_URL=postgresql://...
+SECRET_KEY=your-secret-key
+ENVIRONMENT=development|production
+```
+
+### Adding New Dependencies
+```bash
+# Install package
+./scripts/dev.sh install package-name
+
+# Update requirements.txt automatically handled
+```
+
+### Database Migrations
+```bash
+# Create migration
+./scripts/dev.sh migrate "Add new table"
+
+# Apply migrations (auto in production)
+alembic upgrade head
 ```
 
 ## Documentation Maintenance
 
 ### Keeping Instructions Current
-- **Always update these instruction files** when making significant changes to:
-  - Project structure or architecture
-  - Development workflows or scripts
-  - Deployment processes or environments
-  - Code patterns or conventions
-  - New features or major refactoring
-
-### Files to Update
-- `copilot-instructions.md` - Main project overview and guidelines
-- `copilot-api-instructions.md` - FastAPI patterns and endpoint development
-- `copilot-database-email.md` - Database and email service patterns
-- `copilot-deployment.md` - Infrastructure and deployment workflows
-- `copilot-dns-analysis.md` - DNS analysis and scoring patterns
-- `copilot-scripts.md` - Development script documentation
+Update this file when making significant changes to:
+- Project structure or architecture
+- Development workflows or scripts
+- Deployment processes
+- Code patterns or conventions
 
 ### Update Process
 ```bash
-# When making changes that affect documentation
+# When making changes
 ./scripts/git.sh commit "Update feature and documentation"
-# Always mention documentation updates in commit messages
 ```
 
 Remember to maintain consistency with existing patterns and prioritize code readability and maintainability.

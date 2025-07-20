@@ -1,149 +1,301 @@
-# Raposa Domain Checker API
+# FastAPI Railway Starter
 
-A FastAPI-based application for checking domain DNS records including MX, SPF, DKIM, and DMARC records. Built for deployment on Railway with PostgreSQL database.
+A production-ready FastAPI application template with PostgreSQL, Railway deployment, and essential features for rapid API development.
 
-## Features
+## 🚀 Quick Start
 
-- ✅ Domain DNS record checking (MX, SPF, DKIM, DMARC)
-- ✅ Usage limits (5 checks per domain per month)
-- ✅ Email collection with optional marketing opt-in
-- ✅ PostgreSQL database integration with Railway
-- ✅ Database migrations with Alembic
-- ✅ FastAPI with automatic OpenAPI documentation
-- ✅ Separate development and production environments
+### Option 1: Automated Setup (Recommended)
 
-## Development Setup
-
-### Prerequisites
-
-- Python 3.12+
-- Railway CLI
-- PostgreSQL databases setup on Railway
-
-### Quick Start
-
-1. **Clone and setup virtual environment:**
+1. **Clone this repository:**
    ```bash
-   git clone <repository>
-   cd raposa-app
-   python3 -m venv .venv
-   source .venv/bin/activate  # or use the configured environment
+   git clone <your-repo-url>
+   cd fastapi-railway-starter
    ```
 
-2. **Install dependencies:**
+2. **Run the automated setup:**
+   ```bash
+   ./setup_railway.sh
+   ```
+
+This script will:
+- Create a new Railway project
+- Add PostgreSQL database
+- Configure environment variables
+- Set up deployment configuration
+- Deploy your API
+
+### Option 2: Manual Setup
+
+1. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Setup Railway databases:**
-   - Development and production PostgreSQL databases are already configured
-   - Use `railway environment development` for dev work
-   - Use `railway environment production` for production
-
-4. **Run database migrations:**
+2. **Set up Railway:**
    ```bash
-   railway run python -m alembic upgrade head
+   railway login
+   railway project new your-project-name
+   railway add postgresql
+   railway link
    ```
 
-5. **Start development server:**
+3. **Deploy:**
    ```bash
-   ./run_dev.sh
+   railway up
    ```
 
-   The development script will:
-   - Kill any existing processes on port 8000
-   - Switch to development environment
-   - Start FastAPI server with hot reload
-
-### API Endpoints
-
-- **GET /** - API information
-- **GET /healthz/** - Health check
-- **POST /check-domain** - Check domain DNS records
-- **GET /domain-usage/{domain}** - Check usage for a domain
-
-### API Documentation
-
-When running the development server, visit:
-- **Interactive API docs:** http://localhost:8000/docs
-- **ReDoc documentation:** http://localhost:8000/redoc
-
-### Testing
-
-Run the test script to verify all endpoints:
-```bash
-./test_api.sh
-```
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-raposa-app/
+├── main.py                 # FastAPI application entry point
 ├── src/
-│   ├── main.py          # FastAPI application
-│   ├── models.py        # SQLAlchemy database models
-│   ├── schemas.py       # Pydantic request/response models
-│   └── database.py      # Database configuration
-├── alembic/             # Database migrations
-├── requirements.txt     # Python dependencies
-├── run_dev.sh          # Development server script
-├── test_api.sh         # API testing script
-├── railway.json        # Railway deployment config
-└── Dockerfile          # Container configuration
+│   ├── database.py         # Database configuration
+│   ├── models.py           # SQLAlchemy models (add your models here)
+│   └── schemas.py          # Pydantic schemas (add your schemas here)
+├── alembic/                # Database migrations
+├── requirements.txt        # Python dependencies
+├── railway.json           # Railway deployment config
+├── setup_railway.sh       # Automated setup script
+└── README.md              # This file
 ```
 
-## Database Schema
+## 🛠️ Features
 
-### Tables
+### ✅ Included
+- **FastAPI** with automatic API documentation
+- **PostgreSQL** database with SQLAlchemy ORM
+- **Alembic** for database migrations
+- **Railway** deployment configuration
+- **Environment-based configuration** (development vs production)
+- **Health check endpoint** (`/health/`)
+- **CORS middleware** configured
+- **Global exception handling**
+- **Structured logging**
+- **Production-ready gunicorn configuration**
 
-**domain_checks:**
-- Stores each domain check with results
-- Includes MX, SPF, DKIM, DMARC records
-- Tracks email, opt-in status, and timestamps
+### 🔧 Ready to Add
+- Authentication/authorization
+- Email services
+- Background tasks
+- File uploads
+- Rate limiting
+- Caching
+- Testing setup
 
-**domain_usage:**
-- Tracks monthly usage per domain
-- Enforces 5-check limit per domain per month
+## 📊 API Endpoints
 
-## Railway Setup Summary
+- `GET /health/` - Health check endpoint
+- `GET /docs` - Interactive API documentation (development only)
+- `GET /redoc` - Alternative API documentation (development only)
 
-### Databases Created:
-- **Development Environment:** Postgres-1Be3 database
-- **Production Environment:** Postgres database
+## 🗄️ Database
 
-### Connection Details:
-- Use `DATABASE_PUBLIC_URL` for external connections (local development)
-- Use `DATABASE_URL` for internal Railway connections (deployed app)
+### Models
+Add your SQLAlchemy models to `src/models.py`:
 
-## Deployment
+```python
+from src.models import Base
+from sqlalchemy import Column, Integer, String, DateTime
 
-The application is configured for Railway deployment with:
-- PostgreSQL databases (development & production)
-- Environment-based configuration
-- Health check endpoints
-- Docker containerization
+class User(Base):
+    __tablename__ = "users"
 
-## Environment Variables
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+```
 
-- `DATABASE_URL` - Internal database connection
-- `DATABASE_PUBLIC_URL` - External database connection (for local development)
+### Migrations
+Create and apply database migrations:
 
-## Next Steps
+```bash
+# Create a new migration
+alembic revision --autogenerate -m "Add user model"
 
-1. ✅ ~~Setup basic API and database~~
-2. ✅ ~~Deploy to Railway for testing~~
-3. 🔄 Enhance DNS checking logic
-4. 🔄 Improve scoring algorithm
-5. 🔄 Add detailed recommendations
-6. 🔄 Implement email reporting
-7. 🔄 Build frontend interface
+# Apply migrations
+alembic upgrade head
+```
 
-Includes:
+### Schemas
+Add your Pydantic schemas to `src/schemas.py`:
 
-- Minimal FastAPI app
-- FastAPI-built Dockerfile for continuous deployments
-- Endpoint for deployment health checks during Railway deploys
+```python
+from pydantic import BaseModel
 
-Code: https://github.com/jmitchel3/fastapi-container
-Railway Template: https://fastapicontainer.com
-Reference blog post on [Coding for Entrepreneurs](https://www.codingforentrepreneurs.com/blog/deploy-fastapi-to-railway-with-this-dockerfile)
+class UserCreate(BaseModel):
+    email: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+```
+
+## 🌐 Adding API Endpoints
+
+Add your endpoints to `main.py`:
+
+```python
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from src.database import get_db
+from src.schemas import UserCreate, UserResponse
+
+@app.post("/users", response_model=UserResponse)
+async def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    # Your endpoint logic here
+    pass
+```
+
+## 🏗️ Development
+
+### Local Development
+1. **Set up local database:**
+   ```bash
+   # Install PostgreSQL locally or use Docker
+   docker run --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres
+   ```
+
+2. **Update `.env` file:**
+   ```bash
+   ENVIRONMENT=development
+   DATABASE_URL=postgresql://postgres:password@localhost:5432/your_db
+   ```
+
+3. **Run the application:**
+   ```bash
+   python -m uvicorn main:app --reload --port 8000
+   ```
+
+4. **Access the API:**
+   - API: http://localhost:8000
+   - Docs: http://localhost:8000/docs
+   - Health: http://localhost:8000/health/
+
+### Railway Commands
+```bash
+# View logs
+railway logs
+
+# Check status
+railway status
+
+# Open shell in production
+railway shell
+
+# Deploy changes
+railway up
+
+# Set environment variables
+railway variables set KEY=value
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+- `ENVIRONMENT` - Set to "development" or "production"
+- `DATABASE_URL` - PostgreSQL connection string (auto-set by Railway)
+- `PORT` - Application port (auto-set by Railway)
+
+### CORS Configuration
+Update CORS origins in `main.py`:
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://yourdomain.com", "https://www.yourdomain.com"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["*"],
+)
+```
+
+## 📦 Adding Dependencies
+
+1. **Add to requirements.txt:**
+   ```bash
+   echo "new-package==1.0.0" >> requirements.txt
+   ```
+
+2. **Install locally:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Deploy changes:**
+   ```bash
+   railway up
+   ```
+
+## 🚀 Deployment
+
+### Automatic Deployment
+Connect your GitHub repository in Railway dashboard for automatic deployments on push.
+
+### Manual Deployment
+```bash
+railway up
+```
+
+### Health Checks
+Railway uses `/health/` endpoint for health monitoring with 120-second timeout.
+
+## 🔍 Monitoring
+
+### Health Check
+```bash
+curl https://your-app.railway.app/health/
+```
+
+### Logs
+```bash
+railway logs --follow
+```
+
+## 🧪 Testing
+
+Add testing dependencies to `requirements.txt`:
+```
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+```
+
+Create tests in `tests/` directory:
+```python
+import pytest
+from fastapi.testclient import TestClient
+from main import app
+
+client = TestClient(app)
+
+def test_health_check():
+    response = client.get("/health/")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+```
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📞 Support
+
+- [Railway Documentation](https://docs.railway.app/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
+
+---
+
+**Happy coding! 🎉**

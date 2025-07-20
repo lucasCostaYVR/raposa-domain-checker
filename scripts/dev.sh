@@ -1,322 +1,221 @@
 #!/bin/bash
 
-# Raposa Domain Checker - Development Helper Scripts
-# Quick commands for common development tasks
+# FastAPI Development Helper Script
+# Common development tasks for FastAPI projects
 
 set -e
 
-# Colors
+# Colors for output
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-RED='\033[0;31m'
 NC='\033[0m'
 
-log() { echo -e "${GREEN}[DEV] $1${NC}"; }
-warn() { echo -e "${YELLOW}[WARN] $1${NC}"; }
-error() { echo -e "${RED}[ERROR] $1${NC}"; }
-info() { echo -e "${BLUE}[INFO] $1${NC}"; }
-
-# Quick development server start
-start_dev() {
-    log "Starting development server..."
-
-    # Check if we're in the right directory
-    if [ ! -f "src/main.py" ]; then
-        error "main.py not found in src/. Run this from project root."
-        exit 1
-    fi
-
-    # Set development environment
-    export ENVIRONMENT=development
-
-    # Start server with hot reload
-    info "Starting FastAPI server with hot reload..."
-    cd src && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+print_step() {
+    echo -e "${BLUE}[DEV]${NC} $1"
 }
 
-# Test API endpoints
-test_api() {
-    log "Testing API endpoints..."
-
-    base_url="http://localhost:8000"
-
-    info "Health Check:"
-    curl -s "$base_url/healthz/" | jq '.' 2>/dev/null || echo "Health check failed"
-    echo ""
-
-    info "API Root:"
-    curl -s "$base_url/" | jq '.' 2>/dev/null || echo "Root endpoint failed"
-    echo ""
-
-    info "OpenAPI Docs available at: http://localhost:8000/docs"
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-# Setup local development environment
-setup_dev() {
-    log "Setting up local development environment..."
-
-    # Check Python version
-    python_version=$(python3 --version 2>&1 | cut -d' ' -f2)
-    info "Python version: $python_version"
-
-    # Create virtual environment if it doesn't exist
-    if [ ! -d "venv" ]; then
-        log "Creating virtual environment..."
-        python3 -m venv venv
-    fi
-
-    # Activate virtual environment
-    log "Activating virtual environment..."
-    source venv/bin/activate
-
-    # Install dependencies
-    log "Installing dependencies..."
-    pip install --upgrade pip
-    pip install -r requirements.txt
-
-    # Install development dependencies
-    log "Installing development dependencies..."
-    pip install black flake8 pytest pytest-asyncio httpx
-
-    log "Development environment setup complete!"
-    info "Activate with: source venv/bin/activate"
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Format code with Black
-format_code() {
-    log "Formatting code with Black..."
-
-    if ! command -v black &> /dev/null; then
-        warn "Black not installed. Installing..."
-        pip install black
-    fi
-
-    black src/ --line-length 88
-    log "Code formatting complete!"
-}
-
-# Lint code with flake8
-lint_code() {
-    log "Linting code with flake8..."
-
-    if ! command -v flake8 &> /dev/null; then
-        warn "Flake8 not installed. Installing..."
-        pip install flake8
-    fi
-
-    flake8 src/ --max-line-length=88 --ignore=E203,W503
-    log "Code linting complete!"
-}
-
-# Run tests
-run_tests() {
-    log "Running tests..."
-
-    if ! command -v pytest &> /dev/null; then
-        warn "Pytest not installed. Installing..."
-        pip install pytest pytest-asyncio httpx
-    fi
-
-    # Run tests with coverage if available
-    if command -v pytest-cov &> /dev/null; then
-        pytest tests/ --cov=src/ --cov-report=html
-        info "Coverage report generated in htmlcov/"
-    else
-        pytest tests/
-    fi
-}
-
-# Database operations
-db_reset() {
-    log "Resetting development database..."
-
-    # Remove existing database file if using SQLite
-    if [ -f "dev.db" ]; then
-        rm dev.db
-        log "Removed existing database file"
-    fi
-
-    # Run migrations
-    if [ -f "alembic.ini" ]; then
-        log "Running Alembic migrations..."
-        alembic upgrade head
-    else
-        warn "No alembic.ini found, database will be created on first run"
-    fi
-
-    log "Database reset complete!"
-}
-
-# Generate new migration
-new_migration() {
-    if [ -z "$1" ]; then
-        error "Please provide a migration description"
-        echo "Usage: $0 migration \"Add new column\""
-        exit 1
-    fi
-
-    log "Creating new migration: $1"
-    alembic revision --autogenerate -m "$1"
-    log "Migration created! Review it before applying."
-}
-
-# Check dependencies for updates
-check_deps() {
-    log "Checking for dependency updates..."
-
-    if ! command -v pip-check &> /dev/null; then
-        info "Installing pip-check..."
-        pip install pip-check
-    fi
-
-    pip-check
-}
-
-# Generate requirements.txt from current environment
-freeze_deps() {
-    log "Generating requirements.txt..."
-    pip freeze > requirements.txt
-    log "Requirements.txt updated!"
-}
-
-# Start fresh development session
-dev_session() {
-    log "Starting fresh development session..."
-
-    # Activate virtual environment if it exists
-    if [ -d "venv" ]; then
-        source venv/bin/activate
-        info "Virtual environment activated"
-    fi
-
-    # Install/update dependencies
-    pip install -r requirements.txt
-
-    # Format and lint code
-    format_code
-    lint_code
-
-    # Start development server
-    start_dev
-}
-
-# Clean up development files
-clean() {
-    log "Cleaning up development files..."
-
-    # Remove Python cache
-    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-    find . -name "*.pyc" -delete 2>/dev/null || true
-    find . -name ".pytest_cache" -type d -exec rm -rf {} + 2>/dev/null || true
-
-    # Remove coverage files
-    rm -rf htmlcov/ .coverage 2>/dev/null || true
-
-    log "Cleanup complete!"
-}
-
-# Show development environment info
-dev_info() {
-    log "Development Environment Info:"
-    echo ""
-
-    info "Python version: $(python3 --version 2>&1)"
-    info "Current directory: $(pwd)"
-    info "Git branch: $(git branch --show-current 2>/dev/null || echo 'Not a git repo')"
-
-    if [ -d "venv" ]; then
-        info "Virtual environment: ✅ Found"
-    else
-        warn "Virtual environment: ❌ Not found"
-    fi
-
-    if [ -f "requirements.txt" ]; then
-        info "Dependencies: $(wc -l < requirements.txt) packages listed"
-    fi
-
-    echo ""
-    info "Quick commands:"
-    echo "  Start server: $0 start"
-    echo "  Test API: $0 test"
-    echo "  Format code: $0 format"
-    echo "  Run tests: $0 tests"
-}
-
-# Show help
 show_help() {
-    echo "Raposa Domain Checker - Development Helper Scripts"
+    echo "FastAPI Development Helper"
     echo ""
-    echo "Usage: $0 <command> [arguments]"
+    echo "Usage: ./scripts/dev.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  start               Start development server with hot reload"
-    echo "  test                Test API endpoints"
-    echo "  setup               Setup local development environment"
-    echo "  format              Format code with Black"
-    echo "  lint                Lint code with flake8"
-    echo "  tests               Run test suite"
-    echo "  db-reset            Reset development database"
-    echo "  migration <msg>     Generate new Alembic migration"
-    echo "  check-deps          Check for dependency updates"
-    echo "  freeze              Update requirements.txt"
-    echo "  session             Start fresh development session"
-    echo "  clean               Clean up development files"
-    echo "  info                Show development environment info"
-    echo "  help                Show this help message"
+    echo "  start              Start development server with hot reload"
+    echo "  setup              Setup development environment"
+    echo "  test               Test API endpoints"
+    echo "  migrate            Create and apply database migration"
+    echo "  shell              Start Python shell with app context"
+    echo "  format             Format code with black"
+    echo "  lint               Lint code with flake8"
+    echo "  install            Install/update dependencies"
+    echo "  clean              Clean cache and temp files"
     echo ""
-    echo "Examples:"
-    echo "  $0 start            # Start development server"
-    echo "  $0 session          # Full development startup"
-    echo "  $0 migration \"Add user roles\""
 }
 
-# Main script logic
-main() {
-    case "${1:-help}" in
-        "start")
-            start_dev
-            ;;
-        "test")
-            test_api
-            ;;
-        "setup")
-            setup_dev
-            ;;
-        "format")
-            format_code
-            ;;
-        "lint")
-            lint_code
-            ;;
-        "tests")
-            run_tests
-            ;;
-        "db-reset")
-            db_reset
-            ;;
-        "migration")
-            new_migration "$2"
-            ;;
-        "check-deps")
-            check_deps
-            ;;
-        "freeze")
-            freeze_deps
-            ;;
-        "session")
-            dev_session
-            ;;
-        "clean")
-            clean
-            ;;
-        "info")
-            dev_info
-            ;;
-        "help"|*)
-            show_help
-            ;;
-    esac
+start_server() {
+    print_step "Starting development server..."
+    
+    # Check if .env exists
+    if [ ! -f ".env" ]; then
+        print_error ".env file not found. Creating template..."
+        cat > .env << EOF
+ENVIRONMENT=development
+DATABASE_URL=postgresql://username:password@localhost:5432/your_local_db
+EOF
+        print_step "Please update .env with your local database credentials"
+    fi
+    
+    python -m uvicorn main:app --reload --port 8000 --host 0.0.0.0
 }
 
-main "$@"
+setup_environment() {
+    print_step "Setting up development environment..."
+    
+    # Install dependencies
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt
+        print_success "Dependencies installed"
+    fi
+    
+    # Create .env if not exists
+    if [ ! -f ".env" ]; then
+        cat > .env << EOF
+ENVIRONMENT=development
+DATABASE_URL=postgresql://username:password@localhost:5432/your_local_db
+
+# Add your environment variables here
+# SECRET_KEY=your-secret-key
+# API_KEY=your-api-key
+EOF
+        print_success ".env template created"
+        print_step "Please update .env with your configuration"
+    fi
+    
+    print_success "Development environment ready!"
+    echo "Next steps:"
+    echo "1. Update .env with your database URL"
+    echo "2. Run: ./scripts/dev.sh start"
+}
+
+test_api() {
+    print_step "Testing API endpoints..."
+    
+    # Check if server is running
+    if curl -s http://localhost:8000/health/ > /dev/null; then
+        print_success "Health check passed"
+        
+        # Test health endpoint
+        echo ""
+        echo "Health Check Response:"
+        curl -s http://localhost:8000/health/ | python -m json.tool
+        
+    else
+        print_error "API server not responding on http://localhost:8000"
+        print_step "Start the server first: ./scripts/dev.sh start"
+    fi
+}
+
+create_migration() {
+    print_step "Creating database migration..."
+    
+    read -p "Enter migration message: " message
+    if [ -z "$message" ]; then
+        message="Auto migration"
+    fi
+    
+    alembic revision --autogenerate -m "$message"
+    print_success "Migration created"
+    
+    read -p "Apply migration now? (y/n): " apply
+    if [ "$apply" = "y" ]; then
+        alembic upgrade head
+        print_success "Migration applied"
+    fi
+}
+
+python_shell() {
+    print_step "Starting Python shell..."
+    python -c "
+import sys
+sys.path.append('.')
+from main import app
+from src.database import get_db, engine
+from src.models import Base
+print('FastAPI app available as: app')
+print('Database engine available as: engine')
+print('Database models available as: Base')
+print('Database session: next(get_db())')
+"
+    python
+}
+
+format_code() {
+    print_step "Formatting code with black..."
+    
+    if command -v black &> /dev/null; then
+        black .
+        print_success "Code formatted"
+    else
+        print_error "Black not installed. Install with: pip install black"
+    fi
+}
+
+lint_code() {
+    print_step "Linting code with flake8..."
+    
+    if command -v flake8 &> /dev/null; then
+        flake8 --max-line-length=88 --exclude=.venv,alembic .
+        print_success "Linting complete"
+    else
+        print_error "Flake8 not installed. Install with: pip install flake8"
+    fi
+}
+
+install_deps() {
+    print_step "Installing/updating dependencies..."
+    pip install -r requirements.txt
+    print_success "Dependencies updated"
+}
+
+clean_cache() {
+    print_step "Cleaning cache and temporary files..."
+    
+    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    find . -name "*.pyc" -delete 2>/dev/null || true
+    find . -name "*.pyo" -delete 2>/dev/null || true
+    find . -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+    
+    print_success "Cache cleaned"
+}
+
+# Main command handling
+case "${1:-}" in
+    "start")
+        start_server
+        ;;
+    "setup")
+        setup_environment
+        ;;
+    "test")
+        test_api
+        ;;
+    "migrate")
+        create_migration
+        ;;
+    "shell")
+        python_shell
+        ;;
+    "format")
+        format_code
+        ;;
+    "lint")
+        lint_code
+        ;;
+    "install")
+        install_deps
+        ;;
+    "clean")
+        clean_cache
+        ;;
+    "help"|"--help"|"-h")
+        show_help
+        ;;
+    "")
+        show_help
+        ;;
+    *)
+        print_error "Unknown command: $1"
+        show_help
+        exit 1
+        ;;
+esac
