@@ -379,33 +379,35 @@ async def check_dmarc_record(domain: str) -> Dict[str, Any]:
     # Parse DMARC record
     policy = parse_dmarc_record(dmarc_record)
     issues = []
-    score = 10  # Base score for having DMARC
+    score = 0  # Start from 0 for cleaner scoring
 
-    # Analyze policy strength
+    # Analyze policy strength (main component: 25 points max)
     p_policy = policy.get("p", "none")
     if p_policy == "reject":
-        score += 20
+        score += 25
     elif p_policy == "quarantine":
-        score += 15
+        score += 20
         issues.append("Consider upgrading to 'p=reject' for maximum protection")
     elif p_policy == "none":
-        score += 5
+        score += 10
         issues.append("DMARC policy is 'none' - not enforcing authentication")
 
-    # Check percentage
+    # Check percentage (can reduce policy score)
     pct = policy.get("pct", "100")
     try:
         pct_value = int(pct)
         if pct_value < 100:
             issues.append(f"DMARC policy applies to only {pct}% of emails")
-            score = max(score - 5, 0)
+            score = max(score - 3, 0)
     except ValueError:
         issues.append("Invalid DMARC percentage value")
+        score = max(score - 2, 0)
 
-    # Check for reporting
-    if not policy.get("rua") and not policy.get("ruf"):
+    # Check for reporting (5 points for proper monitoring)
+    if policy.get("rua") or policy.get("ruf"):
+        score += 5
+    else:
         issues.append("No DMARC reporting configured")
-        score = max(score - 3, 0)
 
     status = "valid" if not issues else "warning"
 
