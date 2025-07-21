@@ -1,13 +1,16 @@
-from typing import Union
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
+from typing import Union, Optional
+from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from src.database import get_db, engine
-from src.models import Base, DomainCheck, DomainUsage
+from src.models import Base, DomainCheck, DomainUsage, User, UserDomain
 from src.schemas import DomainCheckRequest, DomainCheckResponse
 from src.dns_utils import check_all_dns_records
 from src.email_service import get_email_service
+from src.auth_routes import router as auth_router
+from src.domain_routes import router as domain_router
+from src.auth_dependencies import get_current_user_optional, get_client_ip, User
 # Force redeploy to clear cached database connection state
 import re
 import logging
@@ -109,6 +112,10 @@ app = FastAPI(
     redoc_url=redoc_url
 )
 
+# Include routers
+app.include_router(auth_router)
+app.include_router(domain_router)
+
 # Configure CORS for frontend development with custom origin checking
 app.add_middleware(
     CORSMiddleware,
@@ -195,12 +202,14 @@ async def send_domain_report_email(email: str, domain: str, analysis_results: di
 
 async def check_rate_limits(
     domain: str, 
-    email: str = None, 
+    email: Optional[str] = None, 
+    user: Optional[User] = None,
+    client_ip: Optional[str] = None,
     db: Session = None
 ) -> tuple[bool, str]:
     """
     Check rate limits for domain checks.
-        Returns (is_allowed, limit_message)
+    Returns (is_allowed, limit_message)
     """
     current_month = datetime.now().strftime("%Y-%m")
     
@@ -210,13 +219,19 @@ async def check_rate_limits(
         DomainUsage.month_year == current_month
     ).first()
 
-    if email:
-        # Registered user - 15 checks per domain per month
+    if user:
+        # Authenticated user - higher limits based on subscription
+        max_checks = 50 if user.is_premium else 15
+        if domain_usage and domain_usage.check_count >= max_checks:
+            return False, f"Domain check limit exceeded. Maximum {max_checks} checks per domain per month."
+        return True, ""
+    elif email:
+        # Anonymous user with email - 15 checks per domain per month
         if domain_usage and domain_usage.check_count >= 15:
             return False, "Domain check limit exceeded. Maximum 15 checks per domain per month. Create an account for more checks!"
         return True, ""
     else:
-        # Anonymous user - 1 check per domain per month (domain-based, not IP)
+        # Anonymous user without email - 1 check per domain per month (domain-based, not IP)
         if domain_usage and domain_usage.check_count >= 1:
             return False, "You've already checked this domain this month. Provide an email address for additional checks!"
         return True, ""
@@ -225,15 +240,18 @@ async def check_rate_limits(
 async def check_domain(
     request: DomainCheckRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    req: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Perform comprehensive domain security analysis including MX, SPF, DKIM, and DMARC records.
 
     - **domain**: Domain name to analyze (e.g., example.com)
-    - **email**: Email address for results delivery (optional for first check)
+    - **email**: Email address for results delivery (optional for authenticated users)
     - **opt_in_marketing**: Whether to receive marketing emails
 
+    Supports both authenticated users (higher limits) and anonymous users.
     Returns detailed security analysis with scoring and recommendations.
     """
 
@@ -245,15 +263,23 @@ async def check_domain(
         if not await is_valid_domain(request.domain):
             raise HTTPException(status_code=422, detail="Invalid or unsafe domain format")
 
-        # Use default email for anonymous users to prevent email service issues
-        effective_email = request.email or "anonymous@raposa.tech"
+        # Get client IP for anonymous user tracking
+        client_ip = get_client_ip(req)
         
-        logger.info(f"Domain check requested for {request.domain} by {request.email or 'anonymous user'}")
+        # Determine effective email for record keeping
+        if current_user:
+            effective_email = current_user.email
+        else:
+            effective_email = request.email or "anonymous@raposa.tech"
+        
+        logger.info(f"Domain check requested for {request.domain} by {current_user.email if current_user else (request.email or 'anonymous user')}")
 
         # Check rate limits using our progressive system
         is_allowed, limit_message = await check_rate_limits(
             domain=request.domain,
             email=request.email,
+            user=current_user,
+            client_ip=client_ip,
             db=db
         )
 
@@ -267,6 +293,7 @@ async def check_domain(
         domain_check = DomainCheck(
             email=effective_email,
             domain=request.domain,
+            user_id=current_user.id if current_user else None,
             mx_record=dns_analysis["mx"],
             spf_record=dns_analysis["spf"],
             dkim_record=dns_analysis["dkim"],
