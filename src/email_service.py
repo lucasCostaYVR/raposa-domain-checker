@@ -1,319 +1,292 @@
 """
-Email service module using SendGrid for sending domain reports with Jinja2 templates.
+Email service module using SendGrid for direct email sending.
 """
 
 import os
 import logging
 from typing import Dict, List, Optional
-import sendgrid
-from sendgrid.helpers.mail import Mail, Email, To, Content, Attachment
-import base64
 from datetime import datetime
-import json
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-from pathlib import Path
+import sendgrid
+from sendgrid.helpers.mail import Mail, From, To, Subject, HtmlContent, PlainTextContent
 
 logger = logging.getLogger(__name__)
 
-# Initialize Jinja2 environment
-template_dir = Path(__file__).parent / "templates"
-jinja_env = Environment(
-    loader=FileSystemLoader(template_dir),
-    autoescape=select_autoescape(['html', 'xml'])
-)
-
-
 
 class SendGridEmailService:
-    # ...existing code...
-    """Email service using SendGrid API for sending domain security reports."""
+    """Email service using SendGrid for direct email sending."""
 
     def __init__(self):
-        self.api_key = os.getenv("SENDGRID_API_KEY")
-        self.from_name = os.getenv("SENDGRID_FROM_NAME", "Raposa Domain Checker")
-        self.from_email = os.getenv("SENDGRID_FROM_ADDRESS")
-
-        if not self.api_key:
+        api_key = os.getenv("SENDGRID_API_KEY")
+        if not api_key:
             raise ValueError("SENDGRID_API_KEY environment variable is required")
-        if not self.from_email:
-            raise ValueError("SENDGRID_FROM_ADDRESS environment variable is required")
 
-        self.sg = sendgrid.SendGridAPIClient(api_key=self.api_key)
-        logger.info(f"SendGrid email service initialized with from: {self.from_name} <{self.from_email}>")
+        self.sg = sendgrid.SendGridAPIClient(api_key=api_key)
+        self.from_email = os.getenv("SENDGRID_FROM_EMAIL", "hello@raposa.tech")
+        self.from_name = os.getenv("SENDGRID_FROM_NAME", "Raposa Domain Checker")
+        
+        logger.info(f"SendGrid email service initialized successfully")
 
     async def send_domain_report(
         self,
         to_email: str,
         domain: str,
-        analysis_results: Dict,
-        include_pdf: bool = False
+        analysis_results: Dict
     ) -> bool:
-        """Send a domain security report email using SendGrid with Jinja2 templates.
-
+        """
+        Send domain report email directly via SendGrid.
+        
         Args:
-            to_email: The recipient's email address
-            domain: The domain that was analyzed
-            analysis_results: Dictionary containing all analysis results
-            include_pdf: Whether to include a PDF version (not implemented yet)
-
+            to_email: Recipient email address
+            domain: Domain name being analyzed
+            analysis_results: Domain analysis data
+            
         Returns:
-            bool: True if email was sent successfully, False otherwise
+            bool: True if email was sent successfully
         """
         try:
-            # Prepare template data
-            template_data = self._prepare_template_data(domain, analysis_results)
-
-            # Render templates
-            html_template = jinja_env.get_template('domain_report.html')
-            text_template = jinja_env.get_template('domain_report.txt')
-
-            html_content = html_template.render(**template_data)
-            text_content = text_template.render(**template_data)
-
-            # Create the email message
+            logger.info(f"Preparing to send domain report email for {to_email}, domain: {domain}")
+            
+            # Generate email content
+            subject = f"Domain Security Analysis Report for {domain}"
+            html_content = self._generate_domain_report_html(domain, analysis_results)
+            text_content = self._generate_domain_report_text(domain, analysis_results)
+            
+            # Create the email
             message = Mail(
-                from_email=Email(self.from_email, self.from_name),
+                from_email=From(self.from_email, self.from_name),
                 to_emails=To(to_email),
-                subject=f"Raposa Domain Security Report for {domain}",
-                plain_text_content=Content("text/plain", text_content),
-                html_content=Content("text/html", html_content)
+                subject=Subject(subject),
+                html_content=HtmlContent(html_content),
+                plain_text_content=PlainTextContent(text_content)
             )
-
-            # Attach PDF if requested
-            if include_pdf:
-                pdf_content = await self._generate_pdf_report(domain, analysis_results)
-                if pdf_content:
-                    attachment = Attachment()
-                    attachment.file_content = pdf_content
-                    attachment.file_type = "application/pdf"
-                    attachment.file_name = f"domain_report_{domain}.pdf"
-                    attachment.disposition = "attachment"
-                    message.attachment = attachment
-
+            
             # Send the email
             response = self.sg.send(message)
-
-            if response.status_code in [200, 202]:
-                logger.info(f"Domain report email sent successfully to {to_email} for {domain}")
+            
+            if response.status_code in [200, 201, 202]:
+                logger.info(f"✅ Domain report email sent successfully to {to_email} (domain: {domain})")
                 return True
             else:
-                logger.error(f"Failed to send email. Status code: {response.status_code}")
+                logger.error(f"❌ Failed to send email. Status: {response.status_code}, Body: {response.body}")
                 return False
-
+                
         except Exception as e:
-            logger.error(f"Error sending domain report email to {to_email} for {domain}: {e}")
+            logger.error(f"Failed to send domain report email: {e}")
             return False
 
-        # Build HTML content (reuse your template)
-        html_content = f"""
+    def _generate_domain_report_html(self, domain: str, analysis_results: Dict) -> str:
+        """Generate HTML email content for domain report."""
+        score = analysis_results.get("score", 0)
+        grade = analysis_results.get("grade", "F")
+        security_level = analysis_results.get("security_summary", {}).get("security_level", "Poor")
+        mx_record = analysis_results.get("mx_record", {})
+        spf_record = analysis_results.get("spf_record", {})
+        dkim_record = analysis_results.get("dkim_record", {})
+        dmarc_record = analysis_results.get("dmarc_record", {})
+        issues = analysis_results.get("issues", [])
+        recommendations = analysis_results.get("recommendations", [])
+        
+        # Status indicators
+        def get_status_icon(status):
+            return "✅" if status == "valid" else "❌"
+        
+        html = f"""
         <!DOCTYPE html>
-        <html lang='en'>
+        <html>
         <head>
-            <meta charset='utf-8'>
-            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-            <title>Raposa Domain Security Report - {domain}</title>
+            <meta charset="utf-8">
+            <title>Domain Security Report</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: #2563eb; color: white; padding: 20px; text-align: center; }}
+                .score-box {{ background: #f8fafc; border: 2px solid #e2e8f0; padding: 20px; margin: 20px 0; text-align: center; }}
+                .grade {{ font-size: 48px; font-weight: bold; color: #2563eb; }}
+                .record-section {{ margin: 20px 0; padding: 15px; border-left: 4px solid #e2e8f0; }}
+                .valid {{ border-color: #10b981; }}
+                .invalid {{ border-color: #ef4444; }}
+                .issues {{ background: #fef2f2; padding: 15px; border-radius: 8px; }}
+                .recommendations {{ background: #f0f9ff; padding: 15px; border-radius: 8px; }}
+                .footer {{ text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }}
+            </style>
         </head>
-        <body style='margin:0;padding:0;background:#000;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,\'Noto Sans\',sans-serif;'>
-            <table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='background:#000;'>
-                <tr>
-                    <td align='center'>
-                        <table width='600' cellpadding='0' cellspacing='0' border='0' style='background:#1e293b;border-radius:12px;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);margin:32px 0;'>
-                            <tr>
-                                <td style='background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);padding:32px 20px 20px 20px;text-align:center;border-top-left-radius:12px;border-top-right-radius:12px;'>
-                                    <div style='font-size:1.25rem;font-weight:700;color:#fff;letter-spacing:-0.025em;text-align:center;'>Raposa</div>
-                                    <div style='font-size:0.75rem;color:#9ca3af;text-transform:uppercase;letter-spacing:0.1em;text-align:center;'>domain checker</div>
-                                    <h2 style='margin:16px 0 0 0;text-decoration:none;color:#fff;font-size:1.5rem;font-weight:600;'>
-                                        <span style='text-decoration:none;color:#fff;border-bottom:0;cursor:text;'>{domain}</span>
-                                    </h2>
-                                    <p style='margin:8px 0 0 0;color:#d1d5db;font-size:0.95rem;'>Generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style='padding:30px;'>
-                                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
-                                        <tr>
-                                            <td style='background:{grade_color};color:#fff;padding:20px;text-align:center;border-radius:12px;'>
-                                                <div style='font-size:48px;font-weight:bold;'>{score}/100</div>
-                                                <div style='font-size:24px;margin-top:10px;'>Grade: {grade}</div>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    <h3 style='color:#fff;margin-top:32px;'>&#128202; Security Components Analysis</h3>
-                                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
-                                        <tr>
-                                            <td style='background:#374151;border-left:4px solid #3b82f6;border-radius:12px;padding:15px;margin:15px 0;'>
-                                                <div style='font-weight:bold;font-size:16px;color:#fff;'>{status_icon(mx_status)} MX Records (Mail Exchange)</div>
-                                                <div style='margin-top:5px;color:#d1d5db;'>Status: {mx_status.title()} | Score: {results.get('mx_record', {}).get('score', 0)}/25</div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style='background:#374151;border-left:4px solid #3b82f6;border-radius:12px;padding:15px;margin:15px 0;'>
-                                                <div style='font-weight:bold;font-size:16px;color:#fff;'>{status_icon(spf_status)} SPF Record (Sender Policy Framework)</div>
-                                                <div style='margin-top:5px;color:#d1d5db;'>Status: {spf_status.title()} | Score: {results.get('spf_record', {}).get('score', 0)}/25</div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style='background:#374151;border-left:4px solid #3b82f6;border-radius:12px;padding:15px;margin:15px 0;'>
-                                                <div style='font-weight:bold;font-size:16px;color:#fff;'>{status_icon(dkim_status)} DKIM Records (DomainKeys Identified Mail)</div>
-                                                <div style='margin-top:5px;color:#d1d5db;'>Status: {dkim_status.title()} | Score: {results.get('dkim_record', {}).get('score', 0)}/25</div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style='background:#374151;border-left:4px solid #3b82f6;border-radius:12px;padding:15px;margin:15px 0;'>
-                                                <div style='font-weight:bold;font-size:16px;color:#fff;'>{status_icon(dmarc_status)} DMARC Record (Domain-based Message Authentication)</div>
-                                                <div style='margin-top:5px;color:#d1d5db;'>Status: {dmarc_status.title()} | Score: {results.get('dmarc_record', {}).get('score', 0)}/25</div>
-                                            </td>
-                                        </tr>
-                                    </table>
-                                    <!-- Issues and Recommendations will be appended below -->
-                                    <div style='margin-top:30px;padding-top:20px;border-top:1px solid #374151;'>
-                                        <p style='font-size:1rem;color:#d1d5db;'><strong>Need help implementing these recommendations?</strong></p>
-                                        <p style='font-size:0.95rem;color:#9ca3af;'>For technical support, reply to this email or visit our help center.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style='background:#1e293b;color:#9ca3af;padding:20px;text-align:center;font-size:12px;border-bottom-left-radius:12px;border-bottom-right-radius:12px;border-top:1px solid #374151;'>
-                                    <p style='text-align:center;margin:0;'>This report was generated by <span style='color:#3b82f6;font-weight:600;'>Raposa Domain Checker</span></p>
-                                    <p style='text-align:center;margin:0;'>Protecting your domain security, one check at a time.</p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🛡️ Domain Security Analysis</h1>
+                    <h2>{domain}</h2>
+                </div>
+                
+                <div class="score-box">
+                    <div class="grade">{grade}</div>
+                    <div><strong>{score}/100</strong> - {security_level} Security</div>
+                </div>
+                
+                <div class="record-section {'valid' if mx_record.get('status') == 'valid' else 'invalid'}">
+                    <h3>{get_status_icon(mx_record.get('status', 'missing'))} MX Records</h3>
+                    <p><strong>Status:</strong> {mx_record.get('status', 'Missing').title()}</p>
+                    <p><strong>Score:</strong> {mx_record.get('score', 0)}/20</p>
+                    <p>{mx_record.get('explanation', {}).get('current_status', '')}</p>
+                </div>
+                
+                <div class="record-section {'valid' if spf_record.get('status') == 'valid' else 'invalid'}">
+                    <h3>{get_status_icon(spf_record.get('status', 'missing'))} SPF Record</h3>
+                    <p><strong>Status:</strong> {spf_record.get('status', 'Missing').title()}</p>
+                    <p><strong>Score:</strong> {spf_record.get('score', 0)}/25</p>
+                    <p>{spf_record.get('explanation', {}).get('current_status', '')}</p>
+                </div>
+                
+                <div class="record-section {'valid' if dkim_record.get('status') == 'valid' else 'invalid'}">
+                    <h3>{get_status_icon(dkim_record.get('status', 'missing'))} DKIM Record</h3>
+                    <p><strong>Status:</strong> {dkim_record.get('status', 'Missing').title()}</p>
+                    <p><strong>Score:</strong> {dkim_record.get('score', 0)}/25</p>
+                    <p>{dkim_record.get('explanation', {}).get('current_status', '')}</p>
+                </div>
+                
+                <div class="record-section {'valid' if dmarc_record.get('status') == 'valid' else 'invalid'}">
+                    <h3>{get_status_icon(dmarc_record.get('status', 'missing'))} DMARC Record</h3>
+                    <p><strong>Status:</strong> {dmarc_record.get('status', 'Missing').title()}</p>
+                    <p><strong>Score:</strong> {dmarc_record.get('score', 0)}/30</p>
+                    <p>{dmarc_record.get('explanation', {}).get('current_status', '')}</p>
+                </div>"""
+        
+        if issues:
+            html += """
+                <div class="issues">
+                    <h3>🔍 Issues Found</h3>
+                    <ul>"""
+            for issue in issues:
+                html += f"<li>{issue}</li>"
+            html += "</ul></div>"
+        
+        if recommendations:
+            html += """
+                <div class="recommendations">
+                    <h3>💡 Recommendations</h3>
+                    <ul>"""
+            for rec in recommendations:
+                html += f"<li>{rec}</li>"
+            html += "</ul></div>"
+        
+        html += f"""
+                <div class="footer">
+                    <p>This report was generated by <strong>Raposa Domain Checker</strong></p>
+                    <p>Visit <a href="https://domainchecker.raposa.tech">domainchecker.raposa.tech</a> for more security analyses</p>
+                    <p>Report generated on {datetime.utcnow().strftime('%B %d, %Y')}</p>
+                </div>
+            </div>
         </body>
-        </html>
+        </html>"""
+        
+        return html
+
+    def _generate_domain_report_text(self, domain: str, analysis_results: Dict) -> str:
+        """Generate plain text email content for domain report."""
+        score = analysis_results.get("score", 0)
+        grade = analysis_results.get("grade", "F")
+        security_level = analysis_results.get("security_summary", {}).get("security_level", "Poor")
+        mx_record = analysis_results.get("mx_record", {})
+        spf_record = analysis_results.get("spf_record", {})
+        dkim_record = analysis_results.get("dkim_record", {})
+        dmarc_record = analysis_results.get("dmarc_record", {})
+        issues = analysis_results.get("issues", [])
+        recommendations = analysis_results.get("recommendations", [])
+        
+        text = f"""
+DOMAIN SECURITY ANALYSIS REPORT
+{'=' * 40}
+
+Domain: {domain}
+Overall Score: {score}/100 (Grade {grade})
+Security Level: {security_level}
+
+DNS RECORDS ANALYSIS
+{'=' * 20}
+
+MX Records: {mx_record.get('status', 'Missing').upper()}
+Score: {mx_record.get('score', 0)}/20
+{mx_record.get('explanation', {}).get('current_status', '')}
+
+SPF Record: {spf_record.get('status', 'Missing').upper()}
+Score: {spf_record.get('score', 0)}/25
+{spf_record.get('explanation', {}).get('current_status', '')}
+
+DKIM Record: {dkim_record.get('status', 'Missing').upper()}
+Score: {dkim_record.get('score', 0)}/25
+{dkim_record.get('explanation', {}).get('current_status', '')}
+
+DMARC Record: {dmarc_record.get('status', 'Missing').upper()}
+Score: {dmarc_record.get('score', 0)}/30
+{dmarc_record.get('explanation', {}).get('current_status', '')}
+"""
+        
+        if issues:
+            text += f"\nISSUES FOUND:\n"
+            for i, issue in enumerate(issues, 1):
+                text += f"{i}. {issue}\n"
+        
+        if recommendations:
+            text += f"\nRECOMMENDATIONS:\n"
+            for i, rec in enumerate(recommendations, 1):
+                text += f"{i}. {rec}\n"
+        
+        text += f"""
+{'=' * 40}
+This report was generated by Raposa Domain Checker
+Visit: https://domainchecker.raposa.tech
+Report generated on: {datetime.utcnow().strftime('%B %d, %Y')}
+"""
+        
+        return text
+
+    def check_sendgrid_connection(self) -> bool:
         """
-
-        # Build plain text content
-        text_content = self._generate_report_text(domain, analysis_results)
-
-        # Prepare the email
-        message = Mail(
-            from_email=Email(self.from_email, self.from_name),
-            to_emails=To(to_email),
-            subject=f"Raposa Domain Security Report for {domain}",
-            plain_text_content=Content("text/plain", text_content),
-            html_content=Content("text/html", html_content)
-        )
-
-        # Optionally attach PDF (not implemented, placeholder)
-        if include_pdf:
-            pdf_b64 = await self._generate_pdf_report(domain, analysis_results)
-            if pdf_b64:
-                attachment = Attachment()
-                attachment.file_content = pdf_b64
-                attachment.file_type = "application/pdf"
-                attachment.file_name = f"Raposa_Domain_Report_{domain}.pdf"
-                attachment.disposition = "attachment"
-                message.attachment = attachment
-
-        # Send the email
+        Check if SendGrid connection is working.
+        
+        Returns:
+            bool: True if SendGrid is accessible
+        """
         try:
-            response = self.sg.send(message)
-            logger.info(f"Domain report email sent to {to_email} for {domain}")
-            logger.info(f"SendGrid response status: {response.status_code}")
-            logger.info(f"SendGrid response body: {response.body}")
-            logger.info(f"SendGrid response headers: {response.headers}")
-            return response.status_code in [200, 202]
+            # Just verify we have the API key
+            return bool(os.getenv("SENDGRID_API_KEY"))
         except Exception as e:
-            logger.error(f"Error sending domain report email to {to_email} for {domain}: {e}")
+            logger.error(f"SendGrid connection check failed: {e}")
             return False
 
-    def _prepare_template_data(self, domain: str, analysis_results: Dict) -> Dict:
-        """Prepare data for template rendering."""
-        def status_icon(status):
-            icons = {"valid": "&#128994;", "warning": "&#128993;", "invalid": "&#128308;", "missing": "&#9898;"}
-            return icons.get(status.lower(), "&#9898;")
-
-        # Extract results data
-        results = analysis_results.get("results", {})
-        mx_record = results.get("mx_record", {})
-        spf_record = results.get("spf_record", {})
-        dkim_record = results.get("dkim_record", {})
-        dmarc_record = results.get("dmarc_record", {})
-
-        # Prepare security components data
-        security_components = [
-            {
-                "name": "MX Records (Mail Exchange)",
-                "status": mx_record.get("status", "unknown").title(),
-                "score": mx_record.get("score", 0),
-                "icon": status_icon(mx_record.get("status", "unknown"))
-            },
-            {
-                "name": "SPF Record (Sender Policy Framework)",
-                "status": spf_record.get("status", "unknown").title(),
-                "score": spf_record.get("score", 0),
-                "icon": status_icon(spf_record.get("status", "unknown"))
-            },
-            {
-                "name": "DKIM Records (DomainKeys Identified Mail)",
-                "status": dkim_record.get("status", "unknown").title(),
-                "score": dkim_record.get("score", 0),
-                "icon": status_icon(dkim_record.get("status", "unknown"))
-            },
-            {
-                "name": "DMARC Record (Domain-based Message Authentication)",
-                "status": dmarc_record.get("status", "unknown").title(),
-                "score": dmarc_record.get("score", 0),
-                "icon": status_icon(dmarc_record.get("status", "unknown"))
+    def get_service_info(self) -> Dict:
+        """
+        Get information about the email service.
+        
+        Returns:
+            Dict: Service statistics and info
+        """
+        try:
+            return {
+                "sendgrid_configured": bool(os.getenv("SENDGRID_API_KEY")),
+                "from_email": self.from_email,
+                "from_name": self.from_name,
+                "service_type": "sendgrid_direct"
             }
-        ]
-
-        return {
-            "domain": domain,
-            "score": analysis_results.get("score", 0),
-            "grade": analysis_results.get("grade", "F"),
-            "grade_color": analysis_results.get("grade_color", "#374151"),
-            "generated_date": datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-            "security_components": security_components,
-            "issues": analysis_results.get("issues", []),
-            "recommendations": analysis_results.get("recommendations", [])
-        }
-
-    async def _generate_pdf_report(self, domain: str, results: Dict) -> Optional[str]:
-        """
-        Generate PDF report and return base64 encoded content.
-
-        TODO: Implement PDF generation using reportlab
-        For now, return None to skip PDF attachment.
-        """
-        logger.info(f"PDF generation not yet implemented for domain {domain}")
-        return None
-
-
-    async def send_welcome_email(self, to_email: str, domain: str) -> bool:
-        """Send a welcome email after first domain check using SendGrid and Jinja2 templates."""
-        try:
-            subject = f"Welcome to Raposa Domain Checker!"
-
-            # Render welcome email template
-            html_template = jinja_env.get_template('welcome_email.html')
-            html_content = html_template.render(domain=domain)
-
-            message = Mail(
-                from_email=Email(self.from_email, self.from_name),
-                to_emails=To(to_email),
-                subject=subject,
-                html_content=Content("text/html", html_content)
-            )
-            response = self.sg.send(message)
-            logger.info(f"Welcome email sent to {to_email}")
-            logger.info(f"SendGrid response status: {response.status_code}")
-            return response.status_code in [200, 202]
         except Exception as e:
-            logger.error(f"Error sending welcome email to {to_email}: {e}")
-            return False
+            logger.error(f"Failed to get service info: {e}")
+            return {
+                "sendgrid_configured": False,
+                "error": str(e)
+            }
 
 
 # Global email service instance
-email_service = None
+_email_service = None
+
 
 def get_email_service() -> SendGridEmailService:
-    """Get or create the global email service instance."""
-    global email_service
-    if email_service is None:
-        email_service = SendGridEmailService()
-    return email_service
+    """
+    Get or create the global email service instance.
+    
+    Returns:
+        SendGridEmailService: The email service instance
+    """
+    global _email_service
+    if _email_service is None:
+        _email_service = SendGridEmailService()
+    return _email_service

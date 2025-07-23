@@ -22,17 +22,39 @@ start_dev() {
     log "Starting development server..."
 
     # Check if we're in the right directory
-    if [ ! -f "src/main.py" ]; then
-        error "main.py not found in src/. Run this from project root."
+    if [ ! -f "main.py" ]; then
+        error "main.py not found in project root. Run this from project root."
         exit 1
     fi
 
     # Set development environment
     export ENVIRONMENT=development
 
+    # Activate virtual environment if it exists
+    if [ -d "venv" ]; then
+        log "Activating virtual environment..."
+        source venv/bin/activate
+    fi
+
+    # Load environment variables
+    if [ -f ".env.local" ]; then
+        log "Loading environment variables from .env.local..."
+        set -a  # automatically export all variables
+        source .env.local
+        set +a  # stop automatically exporting
+    fi
+
+    # Kill any existing processes on port 8000
+    log "Checking for existing processes on port 8000..."
+    if lsof -ti:8000 >/dev/null 2>&1; then
+        warn "Found existing process on port 8000, killing it..."
+        lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+        sleep 1
+    fi
+
     # Start server with hot reload
     info "Starting FastAPI server with hot reload..."
-    cd src && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+    uvicorn main:app --reload --host 0.0.0.0 --port 8000
 }
 
 # Test API endpoints

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -173,29 +173,25 @@ async def send_domain_report_email(email: str, domain: str, analysis_results: di
     try:
         email_service = get_email_service()
 
-        # Send welcome email for first-time users (optional)
-        if is_first_check:
-            await email_service.send_welcome_email(email, domain)
-
         # Send comprehensive domain report
+        # Note: Welcome emails are handled by the separate identity service
         success = await email_service.send_domain_report(
             to_email=email,
             domain=domain,
-            analysis_results=analysis_results,
-            include_pdf=True
+            analysis_results=analysis_results
         )
 
         if success:
-            logger.info(f"Domain report email sent successfully to {email} for {domain}")
+            logger.info(f"Domain report email queued for {email} (domain: {domain})")
         else:
-            logger.error(f"Failed to send domain report email to {email} for {domain}")
+            logger.error(f"Failed to queue domain report email for {email} (domain: {domain})")
 
     except Exception as e:
         logger.error(f"Error in background email task for {email}, domain {domain}: {e}")
 
 async def check_rate_limits(
     domain: str, 
-    email: str = None, 
+    email: Optional[str] = None, 
     db: Session = None
 ) -> tuple[bool, str]:
     """
@@ -360,8 +356,6 @@ async def check_domain(
         db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error during domain analysis")
 
-
-
 @app.get("/domain-usage/{domain}")
 async def get_domain_usage(domain: str, db: Session = Depends(get_db)):
     """Get current month usage for a domain"""
@@ -382,3 +376,20 @@ async def get_domain_usage(domain: str, db: Session = Depends(get_db)):
         "checks_used": usage.check_count,
         "checks_remaining": max(0, 5 - usage.check_count)
     }
+
+@app.get("/debug/email-service")
+async def get_email_service_info():
+    """
+    Debug endpoint to check email service status.
+    Shows if SendGrid is configured and service information.
+    """
+    try:
+        email_service = get_email_service()
+        service_info = email_service.get_service_info()
+        return {
+            "status": "success",
+            "service_info": service_info
+        }
+    except Exception as e:
+        logger.error(f"Error checking email service: {e}")
+        raise HTTPException(status_code=500, detail=f"Email service error: {str(e)}")
