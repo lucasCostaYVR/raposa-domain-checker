@@ -86,9 +86,17 @@ class SendGridEmailService:
         issues = analysis_results.get("issues", [])
         recommendations = analysis_results.get("recommendations", [])
         
-        # Status indicators
+        # Helper functions for template
         def get_status_icon(status):
-            return "✅" if status == "valid" else "❌"
+            return "✅" if status in ["valid", "good"] else "⚠️" if status == "warning" else "❌"
+        
+        def get_status_class(status):
+            if status in ['valid', 'good']:
+                return 'valid'
+            elif status == 'warning':
+                return 'warning'
+            else:
+                return 'invalid'
         
         html = f"""
         <!DOCTYPE html>
@@ -104,6 +112,7 @@ class SendGridEmailService:
                 .grade {{ font-size: 48px; font-weight: bold; color: #2563eb; }}
                 .record-section {{ margin: 20px 0; padding: 15px; border-left: 4px solid #e2e8f0; }}
                 .valid {{ border-color: #10b981; }}
+                .warning {{ border-color: #f59e0b; }}
                 .invalid {{ border-color: #ef4444; }}
                 .issues {{ background: #fef2f2; padding: 15px; border-radius: 8px; }}
                 .recommendations {{ background: #f0f9ff; padding: 15px; border-radius: 8px; }}
@@ -122,28 +131,28 @@ class SendGridEmailService:
                     <div><strong>{score}/100</strong> - {security_level} Security</div>
                 </div>
                 
-                <div class="record-section {'valid' if mx_record.get('status') == 'valid' else 'invalid'}">
+                <div class="record-section {get_status_class(mx_record.get('status', 'missing'))}">
                     <h3>{get_status_icon(mx_record.get('status', 'missing'))} MX Records</h3>
                     <p><strong>Status:</strong> {mx_record.get('status', 'Missing').title()}</p>
                     <p><strong>Score:</strong> {mx_record.get('score', 0)}/20</p>
                     <p>{mx_record.get('explanation', {}).get('current_status', '')}</p>
                 </div>
                 
-                <div class="record-section {'valid' if spf_record.get('status') == 'valid' else 'invalid'}">
+                <div class="record-section {get_status_class(spf_record.get('status', 'missing'))}">
                     <h3>{get_status_icon(spf_record.get('status', 'missing'))} SPF Record</h3>
                     <p><strong>Status:</strong> {spf_record.get('status', 'Missing').title()}</p>
                     <p><strong>Score:</strong> {spf_record.get('score', 0)}/25</p>
                     <p>{spf_record.get('explanation', {}).get('current_status', '')}</p>
                 </div>
                 
-                <div class="record-section {'valid' if dkim_record.get('status') == 'valid' else 'invalid'}">
+                <div class="record-section {get_status_class(dkim_record.get('status', 'missing'))}">
                     <h3>{get_status_icon(dkim_record.get('status', 'missing'))} DKIM Record</h3>
                     <p><strong>Status:</strong> {dkim_record.get('status', 'Missing').title()}</p>
                     <p><strong>Score:</strong> {dkim_record.get('score', 0)}/25</p>
                     <p>{dkim_record.get('explanation', {}).get('current_status', '')}</p>
                 </div>
                 
-                <div class="record-section {'valid' if dmarc_record.get('status') == 'valid' else 'invalid'}">
+                <div class="record-section {get_status_class(dmarc_record.get('status', 'missing'))}">
                     <h3>{get_status_icon(dmarc_record.get('status', 'missing'))} DMARC Record</h3>
                     <p><strong>Status:</strong> {dmarc_record.get('status', 'Missing').title()}</p>
                     <p><strong>Score:</strong> {dmarc_record.get('score', 0)}/30</p>
